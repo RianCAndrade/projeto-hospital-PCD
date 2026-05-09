@@ -1,0 +1,58 @@
+services:
+  # Serviço da aplicação Laravel
+  hospital-pcd:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        user: Rian
+        uid: 1000
+    image: hospital-pcd-app
+    container_name: hospital-pcd-app
+    restart: unless-stopped
+    working_dir: /var/www
+    volumes:
+      - ./:/var/www
+    depends_on:
+      - db
+    networks:
+      - hospital-pcd-network
+
+  # Servidor web Nginx
+  nginx:
+    image: nginx:alpine
+    container_name: hospital-pcd-nginx
+    restart: unless-stopped
+    ports:
+      - "8000:80"
+    volumes:
+      - ./:/var/www
+      - ./docker/nginx/conf.d:/etc/nginx/conf.d
+    depends_on:
+      - hospital-pcd
+    networks:
+      - hospital-pcd-network
+
+  # Banco de dados PostgreSQL
+  db:
+    image: postgres:16-alpine
+    container_name: hospital-pcd-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: hospital_pcd
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ogof
+    ports:
+      - "5436:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - hospital-pcd-network
+
+networks:
+  hospital-pcd-network:
+    driver: bridge
+
+volumes:
+  postgres-data:
+    driver: local
