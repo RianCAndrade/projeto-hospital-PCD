@@ -1,0 +1,203 @@
+// Hospital PCD - Schema do Banco de Dados (PostgreSQL)
+// Cole este arquivo em https://dbdiagram.io para visualizar o ERD
+// Gerado a partir das migrations em backend-hosp-pcd/database/migrations
+
+Project hospital_pcd {
+  database_type: 'PostgreSQL'
+  Note: 'Sistema de gestão hospitalar para crianças e adultos PCD'
+}
+
+// =====================================================
+// USUÁRIOS / AUTENTICAÇÃO
+// =====================================================
+
+Table tbusuarios {
+  id            bigint        [pk, increment]
+  nome          varchar       [not null]
+  email         varchar       [unique, not null]
+  telefone      varchar       [null]
+  senha         varchar       [not null]
+  tipo_usuario  varchar(30)   [not null, default: 'paciente', note: 'admin | recepcionista | medico | responsavel | paciente']
+  created_at    timestamp
+  updated_at    timestamp
+
+  Note: 'Tabela central de autenticação de todos os perfis'
+}
+
+// =====================================================
+// PACIENTES
+// =====================================================
+
+Table tbpacientes {
+  id                          bigint        [pk, increment]
+  usuario_id                  bigint        [unique, null, ref: > tbusuarios.id, note: 'NULL para crianças (acessadas via tbresponsavel_paciente)']
+  nome                        varchar       [not null]
+  data_nascimento             date          [not null]
+  cpf                         varchar       [unique, null]
+  sexo                        varchar(20)   [not null]
+  possui_autismo              boolean       [not null, default: false]
+  necessita_acessibilidade    boolean       [not null, default: false]
+  usa_cadeira_rodas           boolean       [not null, default: false]
+  necessita_acompanhante      boolean       [not null, default: false]
+  observacoes                 text          [null]
+  observacoes_comunicacao     text          [null]
+  created_at                  timestamp
+  updated_at                  timestamp
+  deleted_at                  timestamp     [null, note: 'Soft delete (LGPD/histórico)']
+
+  Indexes {
+    data_nascimento
+  }
+}
+
+Table tbresponsavel_paciente {
+  id            bigint        [pk, increment]
+  usuario_id    bigint        [not null, ref: > tbusuarios.id]
+  paciente_id   bigint        [not null, ref: > tbpacientes.id]
+  parentesco    varchar       [not null]
+  principal     boolean       [not null, default: false]
+  created_at    timestamp
+  updated_at    timestamp
+
+  Indexes {
+    (usuario_id, paciente_id) [unique]
+  }
+
+  Note: 'Vincula adultos (usuários) a pacientes. PARTIAL UNIQUE INDEX em (paciente_id) WHERE principal=true garante 1 só responsável principal por paciente.'
+}
+
+// =====================================================
+// PCD / DEFICIÊNCIAS
+// =====================================================
+
+Table tbtipos_deficiencia {
+  id          bigint    [pk, increment]
+  nome        varchar   [unique, not null]
+  created_at  timestamp
+  updated_at  timestamp
+}
+
+Table tbpaciente_deficiencia {
+  paciente_id          bigint    [not null, ref: > tbpacientes.id]
+  tipo_deficiencia_id  bigint    [not null, ref: > tbtipos_deficiencia.id]
+  observacoes          text      [null]
+
+  Indexes {
+    (paciente_id, tipo_deficiencia_id) [pk]
+  }
+}
+
+// =====================================================
+// MÉDICOS / ESPECIALIDADES
+// =====================================================
+
+Table tbmedicos {
+  id          bigint    [pk, increment]
+  usuario_id  bigint    [unique, not null, ref: > tbusuarios.id, note: '1:1 com tbusuarios']
+  crm         varchar   [unique, not null]
+  descricao   text      [null]
+  created_at  timestamp
+  updated_at  timestamp
+  deleted_at  timestamp [null]
+}
+
+Table tbespecialidades {
+  id          bigint    [pk, increment]
+  nome        varchar   [unique, not null]
+  created_at  timestamp
+  updated_at  timestamp
+}
+
+Table tbmedico_especialidade {
+  medico_id         bigint    [not null, ref: > tbmedicos.id]
+  especialidade_id  bigint    [not null, ref: > tbespecialidades.id]
+
+  Indexes {
+    (medico_id, especialidade_id) [pk]
+  }
+}
+
+// =====================================================
+// AGENDAMENTOS / ATENDIMENTOS
+// =====================================================
+
+Table tbagendamentos {
+  id                bigint        [pk, increment]
+  paciente_id       bigint        [not null, ref: > tbpacientes.id]
+  medico_id         bigint        [not null, ref: > tbmedicos.id]
+  especialidade_id  bigint        [not null, ref: > tbespecialidades.id]
+  recepcionista_id  bigint        [null, ref: > tbusuarios.id, note: 'Recepcionista que registrou (opcional)']
+  data_agendamento  date          [not null]
+  horario           time          [not null]
+  status            varchar(20)   [not null, default: 'agendado', note: 'agendado | confirmado | cancelado | finalizado | faltou']
+  observacoes       text          [null]
+  created_at        timestamp
+  updated_at        timestamp
+  deleted_at        timestamp     [null]
+
+  Indexes {
+    (data_agendamento, status)
+    (medico_id, data_agendamento)
+  }
+}
+
+Table tbatendimentos {
+  id                  bigint        [pk, increment]
+  agendamento_id      bigint        [unique, not null, ref: - tbagendamentos.id, note: '1:1 com agendamento']
+  medico_id           bigint        [not null, ref: > tbmedicos.id]
+  registrado_por_id   bigint        [null, ref: > tbusuarios.id, note: 'Auditoria: quem registrou']
+  status              varchar(20)   [not null, default: 'nao_atendido', note: 'nao_atendido | em_atendimento | atendido | nao_compareceu | cancelado']
+  descricao           text          [null]
+  encaminhamento      text          [null]
+  receita             text          [null]
+  observacoes         text          [null]
+  created_at          timestamp
+  updated_at          timestamp
+  deleted_at          timestamp     [null]
+
+  Indexes {
+    status
+    (medico_id, status)
+  }
+}
+
+// =====================================================
+// SENHAS (TICKET DA CONSULTA)
+// =====================================================
+
+Table tbsenhas {
+  id              bigint        [pk, increment]
+  codigo          varchar       [unique, not null]
+  agendamento_id  bigint        [unique, not null, ref: - tbagendamentos.id, note: '1:1 com agendamento']
+  paciente_id     bigint        [not null, ref: > tbpacientes.id]
+  status          varchar(20)   [not null, default: 'ativa', note: 'ativa | utilizada | expirada | cancelada']
+  chamada_em      timestamp     [null]
+  created_at      timestamp
+  updated_at      timestamp
+
+  Indexes {
+    status
+  }
+}
+
+// =====================================================
+// LARAVEL INTERNO (Sanctum)
+// =====================================================
+
+Table personal_access_tokens {
+  id              bigint        [pk, increment]
+  tokenable_type  varchar       [not null]
+  tokenable_id    bigint        [not null]
+  name            text          [not null]
+  token           varchar(64)   [unique, not null]
+  abilities       text          [null]
+  last_used_at    timestamp     [null]
+  expires_at      timestamp     [null]
+  created_at      timestamp
+  updated_at      timestamp
+
+  Indexes {
+    (tokenable_type, tokenable_id)
+    expires_at
+  }
+}

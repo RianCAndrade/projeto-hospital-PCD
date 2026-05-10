@@ -1,0 +1,140 @@
+%% Hospital PCD - Diagrama ER (Mermaid)
+%% Cole em https://mermaid.live para visualizar
+erDiagram
+
+    tbusuarios ||--o| tbpacientes              : "tem (se for paciente adulto)"
+    tbusuarios ||--o| tbmedicos                : "tem (se for médico)"
+    tbusuarios ||--o{ tbresponsavel_paciente   : "é responsável por"
+    tbusuarios ||--o{ tbagendamentos           : "registra (recepcionista)"
+    tbusuarios ||--o{ tbatendimentos           : "registra (auditoria)"
+
+    tbpacientes ||--o{ tbresponsavel_paciente  : "é cuidado por"
+    tbpacientes ||--o{ tbpaciente_deficiencia  : "possui"
+    tbpacientes ||--o{ tbagendamentos          : "agenda"
+    tbpacientes ||--o{ tbsenhas                : "recebe"
+
+    tbtipos_deficiencia ||--o{ tbpaciente_deficiencia : "categoriza"
+
+    tbmedicos ||--o{ tbmedico_especialidade    : "atua em"
+    tbespecialidades ||--o{ tbmedico_especialidade : "tem"
+    tbmedicos ||--o{ tbagendamentos            : "atende"
+    tbespecialidades ||--o{ tbagendamentos     : "área da consulta"
+    tbmedicos ||--o{ tbatendimentos            : "realiza"
+
+    tbagendamentos ||--|| tbatendimentos       : "gera (1:1)"
+    tbagendamentos ||--|| tbsenhas             : "gera (1:1)"
+
+    tbusuarios {
+        bigint    id PK
+        varchar   nome
+        varchar   email UK
+        varchar   telefone "nullable"
+        varchar   senha
+        varchar   tipo_usuario "admin|recepcionista|medico|responsavel|paciente"
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    tbpacientes {
+        bigint    id PK
+        bigint    usuario_id FK "UK, nullable"
+        varchar   nome
+        date      data_nascimento
+        varchar   cpf "UK, nullable"
+        varchar   sexo
+        boolean   possui_autismo
+        boolean   necessita_acessibilidade
+        boolean   usa_cadeira_rodas
+        boolean   necessita_acompanhante
+        text      observacoes "nullable"
+        text      observacoes_comunicacao "nullable"
+        timestamp created_at
+        timestamp updated_at
+        timestamp deleted_at "soft delete"
+    }
+
+    tbresponsavel_paciente {
+        bigint    id PK
+        bigint    usuario_id FK
+        bigint    paciente_id FK
+        varchar   parentesco
+        boolean   principal "PARTIAL UQ por paciente"
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    tbtipos_deficiencia {
+        bigint    id PK
+        varchar   nome UK
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    tbpaciente_deficiencia {
+        bigint    paciente_id PK_FK
+        bigint    tipo_deficiencia_id PK_FK
+        text      observacoes "nullable"
+    }
+
+    tbmedicos {
+        bigint    id PK
+        bigint    usuario_id FK "UK, 1:1"
+        varchar   crm UK
+        text      descricao "nullable"
+        timestamp created_at
+        timestamp updated_at
+        timestamp deleted_at "soft delete"
+    }
+
+    tbespecialidades {
+        bigint    id PK
+        varchar   nome UK
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    tbmedico_especialidade {
+        bigint    medico_id PK_FK
+        bigint    especialidade_id PK_FK
+    }
+
+    tbagendamentos {
+        bigint    id PK
+        bigint    paciente_id FK
+        bigint    medico_id FK
+        bigint    especialidade_id FK
+        bigint    recepcionista_id FK "nullable"
+        date      data_agendamento
+        time      horario
+        varchar   status "agendado|confirmado|cancelado|finalizado|faltou"
+        text      observacoes "nullable"
+        timestamp created_at
+        timestamp updated_at
+        timestamp deleted_at "soft delete"
+    }
+
+    tbatendimentos {
+        bigint    id PK
+        bigint    agendamento_id FK "UK, 1:1"
+        bigint    medico_id FK
+        bigint    registrado_por_id FK "nullable"
+        varchar   status "nao_atendido|em_atendimento|atendido|nao_compareceu|cancelado"
+        text      descricao "nullable"
+        text      encaminhamento "nullable"
+        text      receita "nullable"
+        text      observacoes "nullable"
+        timestamp created_at
+        timestamp updated_at
+        timestamp deleted_at "soft delete"
+    }
+
+    tbsenhas {
+        bigint    id PK
+        varchar   codigo UK
+        bigint    agendamento_id FK "UK, 1:1"
+        bigint    paciente_id FK
+        varchar   status "ativa|utilizada|expirada|cancelada"
+        timestamp chamada_em "nullable"
+        timestamp created_at
+        timestamp updated_at
+    }

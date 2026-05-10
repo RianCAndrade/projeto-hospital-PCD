@@ -11,10 +11,12 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('tbsenhas', function (Blueprint $table) {
+        Schema::create('tbespecialidades', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('usuario_id')->constrained('tbusuarios')->onDelete('cascade');
-            $table->string('senha');
+
+            $table->string('nome')
+                ->unique();
+
             $table->timestamps();
         });
     }
@@ -24,6 +26,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('tbsenhas');
+        Schema::dropIfExists('tbespecialidades');
     }
 };

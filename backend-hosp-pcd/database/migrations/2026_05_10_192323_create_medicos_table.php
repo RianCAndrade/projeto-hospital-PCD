@@ -13,11 +13,20 @@ return new class extends Migration
     {
         Schema::create('tbmedicos', function (Blueprint $table) {
             $table->id();
-            $table->string('nome');
-            $table->string('crm')->unique();
+
+            $table->foreignId('usuario_id')
+                ->unique()
+                ->constrained('tbusuarios')
+                ->restrictOnDelete();
+
+            $table->string('crm')
+                ->unique();
+
+            $table->text('descricao')
+                ->nullable();
+
             $table->timestamps();
             $table->softDeletes();
-            // $table->foreignId('usuario_id')->unique()->constrained('tbusuarios')->onDelete('cascade');
         });
     }
 
