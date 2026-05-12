@@ -17,8 +17,8 @@ export function DashboardHeader({ titulo, descricao, perfilLabel }: Props) {
   const { usuarioLogado, logout } = useHospital()
   const router = useRouter()
 
-  const handleLogout = () => {
-    logout()
+  const handleLogout = async () => {
+    await logout()
     router.push("/")
   }
 

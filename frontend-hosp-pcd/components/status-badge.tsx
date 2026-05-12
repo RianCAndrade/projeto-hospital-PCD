@@ -1,13 +1,61 @@
 import { cn } from "@/lib/utils"
-import type { StatusConsulta } from "@/lib/types"
-import { Clock, Stethoscope, CheckCircle2, XCircle } from "lucide-react"
+import type { StatusAgendamento, StatusAtendimento, StatusSenha } from "@/lib/types"
+import {
+  Clock,
+  Stethoscope,
+  CheckCircle2,
+  XCircle,
+  CalendarCheck,
+  CalendarX,
+  HelpCircle,
+} from "lucide-react"
 
-const config: Record<
-  StatusConsulta,
-  { label: string; bg: string; fg: string; Icon: typeof Clock }
-> = {
-  aguardando: {
-    label: "Aguardando atendimento",
+/**
+ * Status que o badge sabe renderizar — união dos enums do backend
+ * (StatusAgendamento, StatusAtendimento, StatusSenha) mais o valor
+ * histórico "aguardando" (alias de "agendado") usado em telas legadas.
+ */
+export type StatusVisual =
+  | StatusAgendamento
+  | StatusAtendimento
+  | StatusSenha
+
+interface BadgeConfig {
+  label: string
+  bg: string
+  fg: string
+  Icon: typeof Clock
+}
+
+const config: Record<string, BadgeConfig> = {
+  // Agendamento
+  agendado: {
+    label: "Agendado",
+    bg: "bg-status-aguardando",
+    fg: "text-status-aguardando-foreground",
+    Icon: Clock,
+  },
+  confirmado: {
+    label: "Confirmado",
+    bg: "bg-status-aguardando",
+    fg: "text-status-aguardando-foreground",
+    Icon: CalendarCheck,
+  },
+  finalizado: {
+    label: "Finalizado",
+    bg: "bg-status-encerrado",
+    fg: "text-status-encerrado-foreground",
+    Icon: CheckCircle2,
+  },
+  faltou: {
+    label: "Não compareceu",
+    bg: "bg-status-cancelado",
+    fg: "text-status-cancelado-foreground",
+    Icon: CalendarX,
+  },
+  // Atendimento
+  nao_atendido: {
+    label: "Não atendido",
     bg: "bg-status-aguardando",
     fg: "text-status-aguardando-foreground",
     Icon: Clock,
@@ -18,18 +66,51 @@ const config: Record<
     fg: "text-status-em-atendimento-foreground",
     Icon: Stethoscope,
   },
-  encerrado: {
-    label: "Atendimento encerrado",
+  atendido: {
+    label: "Atendido",
     bg: "bg-status-encerrado",
     fg: "text-status-encerrado-foreground",
     Icon: CheckCircle2,
   },
+  nao_compareceu: {
+    label: "Não compareceu",
+    bg: "bg-status-cancelado",
+    fg: "text-status-cancelado-foreground",
+    Icon: CalendarX,
+  },
+  // Compartilhado
   cancelado: {
     label: "Cancelado",
     bg: "bg-status-cancelado",
     fg: "text-status-cancelado-foreground",
     Icon: XCircle,
   },
+  // Senha
+  ativa: {
+    label: "Ativa",
+    bg: "bg-status-aguardando",
+    fg: "text-status-aguardando-foreground",
+    Icon: Clock,
+  },
+  utilizada: {
+    label: "Utilizada",
+    bg: "bg-status-encerrado",
+    fg: "text-status-encerrado-foreground",
+    Icon: CheckCircle2,
+  },
+  expirada: {
+    label: "Expirada",
+    bg: "bg-status-cancelado",
+    fg: "text-status-cancelado-foreground",
+    Icon: XCircle,
+  },
+}
+
+const fallback: BadgeConfig = {
+  label: "Desconhecido",
+  bg: "bg-muted",
+  fg: "text-muted-foreground",
+  Icon: HelpCircle,
 }
 
 export function StatusBadge({
@@ -37,11 +118,11 @@ export function StatusBadge({
   size = "md",
   className,
 }: {
-  status: StatusConsulta
+  status: StatusVisual | string
   size?: "sm" | "md" | "lg"
   className?: string
 }) {
-  const { label, bg, fg, Icon } = config[status]
+  const { label, bg, fg, Icon } = config[status] ?? fallback
   const sizeClass =
     size === "sm"
       ? "text-xs px-2 py-1 gap-1.5"

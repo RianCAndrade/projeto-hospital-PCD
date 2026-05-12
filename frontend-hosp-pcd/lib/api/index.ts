@@ -1,21 +1,21 @@
 /**
  * Ponto unico de entrada do cliente da API.
  *
- * Como trocar entre mock e Laravel real:
+ * Estrutura:
+ *   - mock.ts  -> implementação em memória (fallback de desenvolvimento)
+ *   - real.ts  -> implementação que consome o backend Laravel
+ *   - types.ts -> contrato `HospitalApi` + DTOs
+ *   - client.ts-> wrapper de fetch + token Sanctum + envelope handling
  *
- *   1. Crie um arquivo .env.local na raiz do projeto com:
+ * Como ligar o Laravel real:
+ *
+ *   1. Crie um arquivo `.env.local` na raiz do projeto Next.js com:
  *        NEXT_PUBLIC_API_MODE=real
  *        NEXT_PUBLIC_API_URL=http://localhost:8000/api
  *
- *   2. (Opcional) Para remover totalmente o modo mock do bundle:
- *        - apague /lib/api/mock.ts
- *        - apague /lib/mock-data.ts
- *        - troque o conteudo deste arquivo por:
- *            export { realApi as api } from "./real"
- *            export type { HospitalApi } from "./types"
- *        - remova o import de credenciaisDemo em /app/login/page.tsx
+ *   2. Reinicie o `next dev`. O front passa a chamar o Laravel.
  *
- * Veja /lib/api/README.md para o passo a passo completo.
+ * Veja /lib/api/README.md para detalhes do estado atual do backend.
  */
 
 import { mockApi } from "./mock"

@@ -1,182 +1,335 @@
 "use client"
 
 import type React from "react"
-import { createContext, useCallback, useContext, useMemo, useState } from "react"
-import type { Agendamento, Crianca, Medico, StatusConsulta, Usuario } from "./types"
-import { agendamentosMock, medicosMock, usuariosMock } from "./mock-data"
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react"
+import { api } from "./api"
+import type {
+  Agendamento,
+  Especialidade,
+  Medico,
+  Paciente,
+  ResponsavelPaciente,
+  StatusAgendamento,
+  TipoDeficiencia,
+  TipoUsuario,
+  Usuario,
+} from "./types"
+import {
+  agendamentosMock,
+  especialidadesMock,
+  medicosMock,
+  pacientesMock,
+  responsaveisMock,
+  tiposDeficienciaMock,
+  usuariosMock,
+} from "./mock-data"
+import type {
+  CreateAgendamentoDto,
+  CreateMedicoDto,
+  CreatePacienteDto,
+  RegisterDto,
+  RescheduleAgendamentoDto,
+} from "./api/types"
 
 interface HospitalContextValue {
   // Auth
   usuarioLogado: Usuario | null
-  login: (email: string, senha: string) => Usuario | null
-  logout: () => void
-  cadastrar: (dados: Omit<Usuario, "id" | "perfil"> & { criancas: Crianca[] }) => Usuario
+  carregando: boolean
+  login: (email: string, senha: string) => Promise<Usuario | null>
+  logout: () => Promise<void>
+  cadastrar: (dto: RegisterDto) => Promise<Usuario>
 
-  // Dados
+  // Dados (todos seguem o shape do backend)
   usuarios: Usuario[]
+  pacientes: Paciente[]
+  responsaveis: ResponsavelPaciente[]
   medicos: Medico[]
+  especialidades: Especialidade[]
+  tiposDeficiencia: TipoDeficiencia[]
   agendamentos: Agendamento[]
 
-  // Acoes de agendamento
-  criarAgendamento: (dados: Omit<Agendamento, "id" | "criadoEm" | "status">) => Agendamento
-  alterarStatus: (id: string, status: StatusConsulta) => void
-  cancelarAgendamento: (id: string) => void
-  remarcarAgendamento: (id: string, novaDataHora: string, novoMedicoId?: string) => void
+  // Helpers para a UI (resolvem nomes a partir dos IDs)
+  getUsuario: (id: number | null | undefined) => Usuario | undefined
+  getPaciente: (id: number | null | undefined) => Paciente | undefined
+  getMedico: (id: number | null | undefined) => Medico | undefined
+  getMedicoNome: (id: number | null | undefined) => string
+  getEspecialidade: (
+    id: number | null | undefined,
+  ) => Especialidade | undefined
+  getEspecialidadeNome: (id: number | null | undefined) => string
+  pacientesDoUsuario: (usuarioId: number) => Paciente[]
 
-  // CRUD admin
-  criarMedico: (dados: Omit<Medico, "id">) => Medico
-  removerMedico: (id: string) => void
-  criarUsuarioFuncionario: (
-    dados: Omit<Usuario, "id" | "criancas"> & { perfil: "recepcionista" | "admin" | "medico" },
-  ) => Usuario
-  removerUsuario: (id: string) => void
+  // Ações
+  criarAgendamento: (dto: CreateAgendamentoDto) => Promise<Agendamento>
+  alterarStatusAgendamento: (
+    id: number,
+    status: StatusAgendamento,
+  ) => Promise<void>
+  cancelarAgendamento: (id: number) => Promise<void>
+  remarcarAgendamento: (
+    id: number,
+    dto: RescheduleAgendamentoDto,
+  ) => Promise<void>
+
+  criarPaciente: (dto: CreatePacienteDto) => Promise<Paciente>
+
+  criarMedico: (dto: CreateMedicoDto) => Promise<Medico>
+  removerMedico: (id: number) => Promise<void>
+
+  removerUsuario: (id: number) => Promise<void>
 }
 
 const HospitalContext = createContext<HospitalContextValue | null>(null)
 
 export function HospitalProvider({ children }: { children: React.ReactNode }) {
   const [usuarios, setUsuarios] = useState<Usuario[]>(usuariosMock)
+  const [pacientes, setPacientes] = useState<Paciente[]>(pacientesMock)
+  const [responsaveis, setResponsaveis] =
+    useState<ResponsavelPaciente[]>(responsaveisMock)
   const [medicos, setMedicos] = useState<Medico[]>(medicosMock)
-  const [agendamentos, setAgendamentos] = useState<Agendamento[]>(agendamentosMock)
+  const [especialidades, setEspecialidades] =
+    useState<Especialidade[]>(especialidadesMock)
+  const [tiposDeficiencia, setTiposDeficiencia] = useState<TipoDeficiencia[]>(
+    tiposDeficienciaMock,
+  )
+  const [agendamentos, setAgendamentos] = useState<Agendamento[]>(
+    agendamentosMock,
+  )
   const [usuarioLogado, setUsuarioLogado] = useState<Usuario | null>(null)
+  const [carregando, setCarregando] = useState(true)
 
-  const login = useCallback(
-    (email: string, _senha: string) => {
-      // Demo: aceita qualquer senha. Em producao, validacao real seria feita no backend.
-      const u = usuarios.find((u) => u.email.toLowerCase() === email.toLowerCase())
-      if (u) {
-        setUsuarioLogado(u)
-        return u
+  // Carga inicial: tenta o bootstrap do backend; se falhar, mantém mock.
+  useEffect(() => {
+    let ativo = true
+    ;(async () => {
+      try {
+        const data = await api.bootstrap()
+        if (!ativo) return
+        setUsuarioLogado(data.usuario)
+        setUsuarios(data.usuarios)
+        setPacientes(data.pacientes)
+        setResponsaveis(data.responsaveis)
+        setMedicos(data.medicos)
+        setAgendamentos(data.agendamentos)
+        setEspecialidades(data.especialidades)
+        setTiposDeficiencia(data.tipos_deficiencia)
+      } catch {
+        // bootstrap pode não existir ainda no backend — silencioso
+      } finally {
+        if (ativo) setCarregando(false)
       }
-      return null
-    },
+    })()
+    return () => {
+      ativo = false
+    }
+  }, [])
+
+  // ── Auth ──────────────────────────────────────────────────────────────
+  const login = useCallback(async (email: string, senha: string) => {
+    const res = await api.auth.login({ email, senha })
+    setUsuarioLogado(res.usuario)
+    return res.usuario
+  }, [])
+
+  const logout = useCallback(async () => {
+    await api.auth.logout()
+    setUsuarioLogado(null)
+  }, [])
+
+  const cadastrar = useCallback(async (dto: RegisterDto) => {
+    const res = await api.auth.register(dto)
+    setUsuarios((prev) => [...prev, res.usuario])
+    // O backend real (RegisterController) NÃO devolve token,
+    // então não logamos automaticamente. A página deve redirecionar
+    // para /login. O mock segue o mesmo contrato.
+    return res.usuario
+  }, [])
+
+  // ── Helpers ───────────────────────────────────────────────────────────
+  const getUsuario = useCallback(
+    (id: number | null | undefined) =>
+      id == null ? undefined : usuarios.find((u) => u.id === id),
     [usuarios],
   )
 
-  const logout = useCallback(() => setUsuarioLogado(null), [])
+  const getPaciente = useCallback(
+    (id: number | null | undefined) =>
+      id == null ? undefined : pacientes.find((p) => p.id === id),
+    [pacientes],
+  )
 
-  const cadastrar: HospitalContextValue["cadastrar"] = useCallback((dados) => {
-    const novo: Usuario = {
-      id: `user-${Date.now()}`,
-      perfil: "paciente",
-      nome: dados.nome,
-      email: dados.email,
-      telefone: dados.telefone,
-      criancas: dados.criancas,
-    }
-    setUsuarios((prev) => [...prev, novo])
-    setUsuarioLogado(novo)
-    return novo
-  }, [])
+  const getMedico = useCallback(
+    (id: number | null | undefined) =>
+      id == null ? undefined : medicos.find((m) => m.id === id),
+    [medicos],
+  )
 
-  const criarAgendamento: HospitalContextValue["criarAgendamento"] = useCallback((dados) => {
-    const novo: Agendamento = {
-      ...dados,
-      id: `ag-${Date.now()}`,
-      status: "aguardando",
-      criadoEm: new Date().toISOString(),
-    }
+  const getMedicoNome = useCallback(
+    (id: number | null | undefined) => {
+      const m = getMedico(id)
+      if (!m) return ""
+      const u = usuarios.find((x) => x.id === m.usuario_id)
+      return u?.nome ?? ""
+    },
+    [getMedico, usuarios],
+  )
+
+  const getEspecialidade = useCallback(
+    (id: number | null | undefined) =>
+      id == null ? undefined : especialidades.find((e) => e.id === id),
+    [especialidades],
+  )
+
+  const getEspecialidadeNome = useCallback(
+    (id: number | null | undefined) => getEspecialidade(id)?.nome ?? "",
+    [getEspecialidade],
+  )
+
+  const pacientesDoUsuario = useCallback(
+    (usuarioId: number) => {
+      const ids = responsaveis
+        .filter((r) => r.usuario_id === usuarioId)
+        .map((r) => r.paciente_id)
+      return pacientes.filter((p) => ids.includes(p.id))
+    },
+    [responsaveis, pacientes],
+  )
+
+  // ── Ações ─────────────────────────────────────────────────────────────
+  const criarAgendamento = useCallback(async (dto: CreateAgendamentoDto) => {
+    const novo = await api.agendamentos.create(dto)
     setAgendamentos((prev) => [novo, ...prev])
     return novo
   }, [])
 
-  const alterarStatus = useCallback((id: string, status: StatusConsulta) => {
-    setAgendamentos((prev) => prev.map((a) => (a.id === id ? { ...a, status } : a)))
-  }, [])
+  const alterarStatusAgendamento = useCallback(
+    async (id: number, status: StatusAgendamento) => {
+      const atualizado = await api.agendamentos.updateStatus(id, status)
+      setAgendamentos((prev) =>
+        prev.map((a) => (a.id === id ? atualizado : a)),
+      )
+    },
+    [],
+  )
 
-  const cancelarAgendamento = useCallback((id: string) => {
-    setAgendamentos((prev) => prev.map((a) => (a.id === id ? { ...a, status: "cancelado" as StatusConsulta } : a)))
+  const cancelarAgendamento = useCallback(async (id: number) => {
+    const atualizado = await api.agendamentos.cancel(id)
+    setAgendamentos((prev) => prev.map((a) => (a.id === id ? atualizado : a)))
   }, [])
 
   const remarcarAgendamento = useCallback(
-    (id: string, novaDataHora: string, novoMedicoId?: string) => {
+    async (id: number, dto: RescheduleAgendamentoDto) => {
+      const atualizado = await api.agendamentos.reschedule(id, dto)
       setAgendamentos((prev) =>
-        prev.map((a) => {
-          if (a.id !== id) return a
-          let updated = { ...a, dataHora: novaDataHora, status: "aguardando" as StatusConsulta }
-          if (novoMedicoId) {
-            const med = medicos.find((m) => m.id === novoMedicoId)
-            if (med) {
-              updated = {
-                ...updated,
-                medicoId: med.id,
-                medicoNome: med.nome,
-                especialidade: med.especialidade,
-              }
-            }
-          }
-          return updated
-        }),
+        prev.map((a) => (a.id === id ? atualizado : a)),
       )
     },
-    [medicos],
+    [],
   )
 
-  const criarMedico: HospitalContextValue["criarMedico"] = useCallback((dados) => {
-    const novo: Medico = { ...dados, id: `med-${Date.now()}` }
+  const criarPaciente = useCallback(async (dto: CreatePacienteDto) => {
+    const novo = await api.pacientes.create(dto)
+    setPacientes((prev) => [...prev, novo])
+    return novo
+  }, [])
+
+  const criarMedico = useCallback(async (dto: CreateMedicoDto) => {
+    const novo = await api.medicos.create(dto)
     setMedicos((prev) => [...prev, novo])
     return novo
   }, [])
 
-  const removerMedico = useCallback((id: string) => {
+  const removerMedico = useCallback(async (id: number) => {
+    await api.medicos.delete(id)
     setMedicos((prev) => prev.filter((m) => m.id !== id))
   }, [])
 
-  const criarUsuarioFuncionario: HospitalContextValue["criarUsuarioFuncionario"] = useCallback((dados) => {
-    const novo: Usuario = {
-      ...dados,
-      id: `user-${Date.now()}`,
-    }
-    setUsuarios((prev) => [...prev, novo])
-    return novo
-  }, [])
-
-  const removerUsuario = useCallback((id: string) => {
+  const removerUsuario = useCallback(async (id: number) => {
+    await api.usuarios.delete(id)
     setUsuarios((prev) => prev.filter((u) => u.id !== id))
   }, [])
 
   const value = useMemo<HospitalContextValue>(
     () => ({
       usuarioLogado,
+      carregando,
       login,
       logout,
       cadastrar,
       usuarios,
+      pacientes,
+      responsaveis,
       medicos,
+      especialidades,
+      tiposDeficiencia,
       agendamentos,
+      getUsuario,
+      getPaciente,
+      getMedico,
+      getMedicoNome,
+      getEspecialidade,
+      getEspecialidadeNome,
+      pacientesDoUsuario,
       criarAgendamento,
-      alterarStatus,
+      alterarStatusAgendamento,
       cancelarAgendamento,
       remarcarAgendamento,
+      criarPaciente,
       criarMedico,
       removerMedico,
-      criarUsuarioFuncionario,
       removerUsuario,
     }),
     [
       usuarioLogado,
+      carregando,
       login,
       logout,
       cadastrar,
       usuarios,
+      pacientes,
+      responsaveis,
       medicos,
+      especialidades,
+      tiposDeficiencia,
       agendamentos,
+      getUsuario,
+      getPaciente,
+      getMedico,
+      getMedicoNome,
+      getEspecialidade,
+      getEspecialidadeNome,
+      pacientesDoUsuario,
       criarAgendamento,
-      alterarStatus,
+      alterarStatusAgendamento,
       cancelarAgendamento,
       remarcarAgendamento,
+      criarPaciente,
       criarMedico,
       removerMedico,
-      criarUsuarioFuncionario,
       removerUsuario,
     ],
   )
 
-  return <HospitalContext.Provider value={value}>{children}</HospitalContext.Provider>
+  return (
+    <HospitalContext.Provider value={value}>
+      {children}
+    </HospitalContext.Provider>
+  )
 }
 
 export function useHospital() {
   const ctx = useContext(HospitalContext)
-  if (!ctx) throw new Error("useHospital deve ser usado dentro de HospitalProvider")
+  if (!ctx)
+    throw new Error("useHospital deve ser usado dentro de HospitalProvider")
   return ctx
 }
+
+// Re-exporta para conveniência das páginas
+export type { TipoUsuario }

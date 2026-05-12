@@ -31,58 +31,57 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Search, Calendar, Users, Filter, CalendarClock, AlertTriangle, X } from "lucide-react"
+import {
+  Search,
+  Calendar,
+  Users,
+  Filter,
+  CalendarClock,
+  X,
+} from "lucide-react"
 import { toast } from "sonner"
-import type { Especialidade, TipoDeficiencia, Agendamento } from "@/lib/types"
+import type { Agendamento } from "@/lib/types"
+import { ApiError } from "@/lib/api"
 
-const especialidades: (Especialidade | "todas")[] = [
-  "todas",
-  "Neuropediatria",
-  "Fonoaudiologia",
-  "Fisioterapia",
-  "Terapia Ocupacional",
-  "Psicologia Infantil",
-  "Pediatria Geral",
-  "Ortopedia Pediátrica",
-  "Oftalmologia Pediátrica",
-]
+function montarDate(data: string, horario: string) {
+  const h = horario.length === 5 ? `${horario}:00` : horario
+  return new Date(`${data}T${h}`)
+}
 
-const tiposDeficiencia: (TipoDeficiencia | "todas")[] = [
-  "todas",
-  "Física",
-  "Intelectual",
-  "Auditiva",
-  "Visual",
-  "Múltipla",
-  "TEA (Autismo)",
-  "Síndrome de Down",
-  "Outra",
-]
+function formatarData(data: string) {
+  const [y, m, d] = data.split("-")
+  return `${d}/${m}/${y}`
+}
 
-function formatarDataHoraCurta(iso: string) {
-  const d = new Date(iso)
-  return {
-    data: `${d.getDate().toString().padStart(2, "0")}/${(d.getMonth() + 1).toString().padStart(2, "0")}/${d.getFullYear()}`,
-    hora: `${d.getHours().toString().padStart(2, "0")}:${d.getMinutes().toString().padStart(2, "0")}`,
-  }
+function formatarHora(horario: string) {
+  return horario.slice(0, 5)
 }
 
 export default function RecepcionistaPage() {
   const router = useRouter()
-  const { usuarioLogado, agendamentos, medicos, remarcarAgendamento, cancelarAgendamento } = useHospital()
+  const {
+    usuarioLogado,
+    agendamentos,
+    medicos,
+    especialidades,
+    getMedicoNome,
+    getEspecialidadeNome,
+    getPaciente,
+    remarcarAgendamento,
+    cancelarAgendamento,
+  } = useHospital()
   const [busca, setBusca] = useState("")
   const [filtroEspecialidade, setFiltroEspecialidade] = useState<string>("todas")
-  const [filtroDeficiencia, setFiltroDeficiencia] = useState<string>("todas")
   const [filtroStatus, setFiltroStatus] = useState<string>("ativos")
 
   const [remarcarOpen, setRemarcarOpen] = useState(false)
   const [agSelecionado, setAgSelecionado] = useState<Agendamento | null>(null)
   const [novaData, setNovaData] = useState("")
   const [novaHora, setNovaHora] = useState("")
-  const [novoMedico, setNovoMedico] = useState("")
+  const [novoMedico, setNovoMedico] = useState<string>("")
 
   useEffect(() => {
-    if (!usuarioLogado || usuarioLogado.perfil !== "recepcionista") {
+    if (!usuarioLogado || usuarioLogado.tipo_usuario !== "recepcionista") {
       router.push("/login")
     }
   }, [usuarioLogado, router])
@@ -90,90 +89,145 @@ export default function RecepcionistaPage() {
   const filtrados = useMemo(() => {
     return agendamentos
       .filter((a) => {
-        if (filtroStatus === "ativos") return a.status === "aguardando" || a.status === "em_atendimento"
-        if (filtroStatus === "encerrados") return a.status === "encerrado"
+        if (filtroStatus === "ativos")
+          return a.status === "agendado" || a.status === "confirmado"
+        if (filtroStatus === "finalizados") return a.status === "finalizado"
         if (filtroStatus === "cancelados") return a.status === "cancelado"
+        if (filtroStatus === "faltou") return a.status === "faltou"
         return true
       })
-      .filter((a) => filtroEspecialidade === "todas" || a.especialidade === filtroEspecialidade)
-      .filter((a) => filtroDeficiencia === "todas" || a.tipoDeficiencia === filtroDeficiencia)
+      .filter(
+        (a) =>
+          filtroEspecialidade === "todas" ||
+          String(a.especialidade_id) === filtroEspecialidade,
+      )
       .filter((a) => {
         const q = busca.toLowerCase().trim()
         if (!q) return true
+        const paciente = getPaciente(a.paciente_id)
+        const medicoNome = getMedicoNome(a.medico_id)
         return (
-          a.pacienteNome.toLowerCase().includes(q) ||
-          a.criancaNome.toLowerCase().includes(q) ||
-          a.medicoNome.toLowerCase().includes(q)
+          (paciente?.nome ?? "").toLowerCase().includes(q) ||
+          medicoNome.toLowerCase().includes(q)
         )
       })
-      .sort((a, b) => new Date(a.dataHora).getTime() - new Date(b.dataHora).getTime())
-  }, [agendamentos, filtroEspecialidade, filtroDeficiencia, filtroStatus, busca])
+      .sort(
+        (a, b) =>
+          montarDate(a.data_agendamento, a.horario).getTime() -
+          montarDate(b.data_agendamento, b.horario).getTime(),
+      )
+  }, [
+    agendamentos,
+    filtroEspecialidade,
+    filtroStatus,
+    busca,
+    getPaciente,
+    getMedicoNome,
+  ])
 
   const stats = useMemo(() => {
     const hoje = new Date().toDateString()
     return {
-      hoje: agendamentos.filter((a) => new Date(a.dataHora).toDateString() === hoje).length,
-      aguardando: agendamentos.filter((a) => a.status === "aguardando").length,
-      ematendimento: agendamentos.filter((a) => a.status === "em_atendimento").length,
-      semMedicoDisp: agendamentos.filter((a) => {
-        if (a.status !== "aguardando") return false
-        const med = medicos.find((m) => m.id === a.medicoId)
-        return med && !med.disponivelHoje
-      }).length,
+      hoje: agendamentos.filter(
+        (a) =>
+          montarDate(a.data_agendamento, a.horario).toDateString() === hoje,
+      ).length,
+      agendados: agendamentos.filter((a) => a.status === "agendado").length,
+      confirmados: agendamentos.filter((a) => a.status === "confirmado").length,
+      cancelados: agendamentos.filter((a) => a.status === "cancelado").length,
     }
-  }, [agendamentos, medicos])
+  }, [agendamentos])
 
   function abrirRemarcar(a: Agendamento) {
     setAgSelecionado(a)
     setNovaData("")
     setNovaHora("")
-    setNovoMedico(a.medicoId)
+    setNovoMedico(String(a.medico_id))
     setRemarcarOpen(true)
   }
 
-  function confirmarRemarcacao(e: React.FormEvent) {
+  async function confirmarRemarcacao(e: React.FormEvent) {
     e.preventDefault()
     if (!agSelecionado || !novaData || !novaHora) {
       toast.error("Informe a nova data e horário.")
       return
     }
-    const dataISO = new Date(`${novaData}T${novaHora}`).toISOString()
-    remarcarAgendamento(agSelecionado.id, dataISO, novoMedico !== agSelecionado.medicoId ? novoMedico : undefined)
-    toast.success("Consulta remarcada", {
-      description: `${agSelecionado.criancaNome} agora está agendada para ${novaData} às ${novaHora}.`,
-    })
-    setRemarcarOpen(false)
+    try {
+      await remarcarAgendamento(agSelecionado.id, {
+        data_agendamento: novaData,
+        horario: novaHora,
+        medico_id:
+          Number(novoMedico) !== agSelecionado.medico_id
+            ? Number(novoMedico)
+            : undefined,
+      })
+      const pacienteNome =
+        getPaciente(agSelecionado.paciente_id)?.nome ?? "paciente"
+      toast.success("Consulta remarcada", {
+        description: `${pacienteNome} agora está agendado(a) para ${formatarData(
+          novaData,
+        )} às ${novaHora}.`,
+      })
+      setRemarcarOpen(false)
+    } catch (err) {
+      const msg = err instanceof ApiError ? err.message : "Erro ao remarcar."
+      toast.error(msg)
+    }
   }
 
   if (!usuarioLogado) return null
-
-  const medicosCompativeisRemarcacao = agSelecionado
-    ? medicos.filter((m) => m.atendeDeficiencias.includes(agSelecionado.tipoDeficiencia))
-    : []
 
   return (
     <div className="min-h-screen bg-background">
       <DashboardHeader
         perfilLabel="Recepção"
         titulo="Painel da recepção"
-        descricao="Gerencie consultas das mães. Verifique disponibilidade dos médicos, remarque ou cancele atendimentos quando necessário."
+        descricao="Gerencie consultas. Verifique disponibilidade dos médicos, remarque ou cancele atendimentos quando necessário."
       />
 
-      <main id="conteudo-principal" className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+      <main
+        id="conteudo-principal"
+        className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 space-y-8"
+      >
         {/* Métricas rápidas */}
-        <section aria-label="Resumo do dia" className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <section
+          aria-label="Resumo do dia"
+          className="grid grid-cols-2 lg:grid-cols-4 gap-4"
+        >
           {[
-            { label: "Consultas hoje", valor: stats.hoje, Icon: Calendar, cor: "primary" },
-            { label: "Aguardando", valor: stats.aguardando, Icon: CalendarClock, cor: "accent" },
-            { label: "Em atendimento", valor: stats.ematendimento, Icon: Users, cor: "primary" },
-            { label: "Sem médico disponível", valor: stats.semMedicoDisp, Icon: AlertTriangle, cor: "destructive" },
+            {
+              label: "Consultas hoje",
+              valor: stats.hoje,
+              Icon: Calendar,
+              cor: "primary",
+            },
+            {
+              label: "Agendados",
+              valor: stats.agendados,
+              Icon: CalendarClock,
+              cor: "accent",
+            },
+            {
+              label: "Confirmados",
+              valor: stats.confirmados,
+              Icon: Users,
+              cor: "primary",
+            },
+            {
+              label: "Cancelados",
+              valor: stats.cancelados,
+              Icon: X,
+              cor: "destructive",
+            },
           ].map(({ label, valor, Icon, cor }) => (
             <article
               key={label}
               className="rounded-2xl border-2 border-border bg-card p-5 hover:shadow-sm transition-shadow"
             >
               <div className="flex items-center justify-between">
-                <p className="text-xs uppercase tracking-widest text-muted-foreground font-bold">{label}</p>
+                <p className="text-xs uppercase tracking-widest text-muted-foreground font-bold">
+                  {label}
+                </p>
                 <span
                   className={`grid h-9 w-9 place-items-center rounded-xl ${
                     cor === "primary"
@@ -197,14 +251,23 @@ export default function RecepcionistaPage() {
             <Filter size={16} className="text-accent" aria-hidden="true" />
             <h2 className="font-display font-bold">Filtrar consultas</h2>
           </div>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
             <div className="space-y-1.5">
-              <Label htmlFor="busca" className="text-xs font-semibold uppercase tracking-wider">Buscar</Label>
+              <Label
+                htmlFor="busca"
+                className="text-xs font-semibold uppercase tracking-wider"
+              >
+                Buscar
+              </Label>
               <div className="relative">
-                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+                <Search
+                  size={14}
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+                  aria-hidden="true"
+                />
                 <Input
                   id="busca"
-                  placeholder="Nome do paciente, criança ou médico..."
+                  placeholder="Nome do paciente ou médico..."
                   value={busca}
                   onChange={(e) => setBusca(e.target.value)}
                   className="pl-9 h-10"
@@ -212,45 +275,49 @@ export default function RecepcionistaPage() {
               </div>
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="esp" className="text-xs font-semibold uppercase tracking-wider">Especialidade</Label>
-              <Select value={filtroEspecialidade} onValueChange={setFiltroEspecialidade}>
+              <Label
+                htmlFor="esp"
+                className="text-xs font-semibold uppercase tracking-wider"
+              >
+                Especialidade
+              </Label>
+              <Select
+                value={filtroEspecialidade}
+                onValueChange={setFiltroEspecialidade}
+              >
                 <SelectTrigger id="esp" className="h-10">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="todas">
+                    Todas as especialidades
+                  </SelectItem>
                   {especialidades.map((e) => (
-                    <SelectItem key={e} value={e}>
-                      {e === "todas" ? "Todas as especialidades" : e}
+                    <SelectItem key={e.id} value={String(e.id)}>
+                      {e.nome}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="def" className="text-xs font-semibold uppercase tracking-wider">Deficiência</Label>
-              <Select value={filtroDeficiencia} onValueChange={setFiltroDeficiencia}>
-                <SelectTrigger id="def" className="h-10">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {tiposDeficiencia.map((t) => (
-                    <SelectItem key={t} value={t}>
-                      {t === "todas" ? "Todas as deficiências" : t}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="status" className="text-xs font-semibold uppercase tracking-wider">Status</Label>
+              <Label
+                htmlFor="status"
+                className="text-xs font-semibold uppercase tracking-wider"
+              >
+                Status
+              </Label>
               <Select value={filtroStatus} onValueChange={setFiltroStatus}>
                 <SelectTrigger id="status" className="h-10">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="ativos">Ativos</SelectItem>
-                  <SelectItem value="encerrados">Encerrados</SelectItem>
+                  <SelectItem value="ativos">
+                    Ativos (agendado/confirmado)
+                  </SelectItem>
+                  <SelectItem value="finalizados">Finalizados</SelectItem>
                   <SelectItem value="cancelados">Cancelados</SelectItem>
+                  <SelectItem value="faltou">Faltaram</SelectItem>
                   <SelectItem value="todos">Todos</SelectItem>
                 </SelectContent>
               </Select>
@@ -259,72 +326,83 @@ export default function RecepcionistaPage() {
         </section>
 
         {/* Tabela */}
-        <section aria-labelledby="tabela-consultas" className="rounded-2xl border-2 border-border bg-card overflow-hidden">
+        <section
+          aria-labelledby="tabela-consultas"
+          className="rounded-2xl border-2 border-border bg-card overflow-hidden"
+        >
           <div className="px-5 py-4 border-b border-border flex items-center justify-between flex-wrap gap-2">
-            <h2 id="tabela-consultas" className="font-display text-lg font-bold">
+            <h2
+              id="tabela-consultas"
+              className="font-display text-lg font-bold"
+            >
               Agendamentos ({filtrados.length})
             </h2>
-            <p className="text-xs text-muted-foreground">
-              Em destaque: pacientes cujo médico não está disponível hoje.
-            </p>
           </div>
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow className="bg-secondary/30">
-                  <TableHead className="font-semibold">Paciente / Criança</TableHead>
+                  <TableHead className="font-semibold">Paciente</TableHead>
                   <TableHead className="font-semibold">Médico</TableHead>
                   <TableHead className="font-semibold">Especialidade</TableHead>
                   <TableHead className="font-semibold">Data e hora</TableHead>
-                  <TableHead className="font-semibold">Disp.</TableHead>
                   <TableHead className="font-semibold">Status</TableHead>
-                  <TableHead className="font-semibold text-right">Ações</TableHead>
+                  <TableHead className="font-semibold text-right">
+                    Ações
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filtrados.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
+                    <TableCell
+                      colSpan={6}
+                      className="text-center py-12 text-muted-foreground"
+                    >
                       Nenhuma consulta encontrada com os filtros atuais.
                     </TableCell>
                   </TableRow>
                 )}
                 {filtrados.map((a) => {
-                  const medico = medicos.find((m) => m.id === a.medicoId)
-                  const dataF = formatarDataHoraCurta(a.dataHora)
-                  const semMedico = !medico?.disponivelHoje && a.status === "aguardando"
+                  const paciente = getPaciente(a.paciente_id)
+                  const medicoNome = getMedicoNome(a.medico_id)
+                  const especialidadeNome = getEspecialidadeNome(
+                    a.especialidade_id,
+                  )
+                  const tipoDef =
+                    paciente?.deficiencias?.[0]?.tipo_deficiencia?.nome ??
+                    (paciente?.possui_autismo ? "TEA (Autismo)" : "")
                   return (
-                    <TableRow key={a.id} className={semMedico ? "bg-destructive/5" : ""}>
+                    <TableRow key={a.id}>
                       <TableCell className="font-medium">
-                        <p className="font-semibold">{a.criancaNome}</p>
-                        <p className="text-xs text-muted-foreground">Mãe: {a.pacienteNome}</p>
-                        <p className="text-xs text-accent font-semibold mt-0.5">{a.tipoDeficiencia}</p>
+                        <p className="font-semibold">{paciente?.nome ?? "—"}</p>
+                        {tipoDef && (
+                          <p className="text-xs text-accent font-semibold mt-0.5">
+                            {tipoDef}
+                          </p>
+                        )}
                       </TableCell>
-                      <TableCell>{a.medicoNome}</TableCell>
+                      <TableCell>{medicoNome || "—"}</TableCell>
                       <TableCell>
                         <span className="text-xs font-semibold rounded-full bg-secondary px-2 py-1">
-                          {a.especialidade}
+                          {especialidadeNome}
                         </span>
                       </TableCell>
                       <TableCell>
-                        <p className="font-semibold">{dataF.data}</p>
-                        <p className="text-xs text-muted-foreground">{dataF.hora}</p>
-                      </TableCell>
-                      <TableCell>
-                        {medico?.disponivelHoje ? (
-                          <span className="text-xs font-semibold text-primary">Disponível</span>
-                        ) : (
-                          <span className="text-xs font-semibold text-destructive flex items-center gap-1">
-                            <AlertTriangle size={12} aria-hidden="true" /> Indisponível
-                          </span>
-                        )}
+                        <p className="font-semibold">
+                          {formatarData(a.data_agendamento)}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {formatarHora(a.horario)}
+                        </p>
                       </TableCell>
                       <TableCell>
                         <StatusBadge status={a.status} size="sm" />
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2 flex-wrap">
-                          {(a.status === "aguardando" || a.status === "em_atendimento") && (
+                          {(a.status === "agendado" ||
+                            a.status === "confirmado") && (
                             <Button
                               size="sm"
                               variant="outline"
@@ -335,13 +413,17 @@ export default function RecepcionistaPage() {
                               Remarcar
                             </Button>
                           )}
-                          {a.status === "aguardando" && (
+                          {a.status === "agendado" && (
                             <Button
                               size="sm"
                               variant="outline"
-                              onClick={() => {
-                                cancelarAgendamento(a.id)
-                                toast.success("Consulta cancelada.")
+                              onClick={async () => {
+                                try {
+                                  await cancelarAgendamento(a.id)
+                                  toast.success("Consulta cancelada.")
+                                } catch {
+                                  toast.error("Erro ao cancelar.")
+                                }
                               }}
                               className="gap-1.5 text-destructive border-destructive/40 hover:bg-destructive/10 hover:text-destructive"
                             >
@@ -359,42 +441,39 @@ export default function RecepcionistaPage() {
           </div>
         </section>
 
-        {/* Médicos disponibilidade rápida */}
-        <section aria-labelledby="medicos-hoje" className="rounded-2xl border-2 border-border bg-card p-5">
-          <h2 id="medicos-hoje" className="font-display text-lg font-bold mb-4">
-            Médicos hoje
+        {/* Médicos rapidamente */}
+        <section
+          aria-labelledby="medicos-hoje"
+          className="rounded-2xl border-2 border-border bg-card p-5"
+        >
+          <h2
+            id="medicos-hoje"
+            className="font-display text-lg font-bold mb-4"
+          >
+            Médicos cadastrados
           </h2>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {medicos.map((m) => (
-              <article
-                key={m.id}
-                className={`rounded-xl border-2 p-4 ${
-                  m.disponivelHoje
-                    ? "border-primary/30 bg-primary/5"
-                    : "border-destructive/30 bg-destructive/5"
-                }`}
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="font-display font-bold leading-tight truncate">{m.nome}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">{m.especialidade}</p>
-                  </div>
-                  <span
-                    className={`text-xs font-bold rounded-full px-2 py-1 whitespace-nowrap ${
-                      m.disponivelHoje
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-destructive text-destructive-foreground"
-                    }`}
-                  >
-                    {m.disponivelHoje ? "Disponível" : "Indisponível"}
-                  </span>
-                </div>
-                <p className="text-xs text-muted-foreground mt-3">
-                  Atende: {m.atendeDeficiencias.slice(0, 2).join(", ")}
-                  {m.atendeDeficiencias.length > 2 && ` +${m.atendeDeficiencias.length - 2}`}
-                </p>
-              </article>
-            ))}
+            {medicos.map((m) => {
+              const nome = getMedicoNome(m.id)
+              const especs =
+                m.especialidades?.map((e) => e.nome).join(", ") ?? "—"
+              return (
+                <article
+                  key={m.id}
+                  className="rounded-xl border-2 border-border bg-card p-4"
+                >
+                  <p className="font-display font-bold leading-tight truncate">
+                    {nome || `Médico #${m.id}`}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    CRM {m.crm}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    {especs}
+                  </p>
+                </article>
+              )
+            })}
           </div>
         </section>
       </main>
@@ -403,10 +482,14 @@ export default function RecepcionistaPage() {
       <Dialog open={remarcarOpen} onOpenChange={setRemarcarOpen}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle className="font-display text-2xl">Remarcar consulta</DialogTitle>
+            <DialogTitle className="font-display text-2xl">
+              Remarcar consulta
+            </DialogTitle>
             <DialogDescription>
               {agSelecionado &&
-                `Reagendando a consulta de ${agSelecionado.criancaNome} (mãe: ${agSelecionado.pacienteNome}).`}
+                `Reagendando a consulta de ${
+                  getPaciente(agSelecionado.paciente_id)?.nome ?? "paciente"
+                }.`}
             </DialogDescription>
           </DialogHeader>
 
@@ -415,32 +498,43 @@ export default function RecepcionistaPage() {
               <div className="rounded-xl bg-secondary/40 p-3 text-sm">
                 <p className="font-semibold">Atual:</p>
                 <p className="text-muted-foreground">
-                  {agSelecionado.medicoNome} · {formatarDataHoraCurta(agSelecionado.dataHora).data} às{" "}
-                  {formatarDataHoraCurta(agSelecionado.dataHora).hora}
+                  {getMedicoNome(agSelecionado.medico_id)} ·{" "}
+                  {formatarData(agSelecionado.data_agendamento)} às{" "}
+                  {formatarHora(agSelecionado.horario)}
                 </p>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="remarcar-medico" className="text-sm font-semibold">
-                  Médico ({medicosCompativeisRemarcacao.length} compatíveis)
+                <Label
+                  htmlFor="remarcar-medico"
+                  className="text-sm font-semibold"
+                >
+                  Médico
                 </Label>
                 <Select value={novoMedico} onValueChange={setNovoMedico}>
                   <SelectTrigger id="remarcar-medico" className="h-11">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {medicosCompativeisRemarcacao.map((m) => (
-                      <SelectItem key={m.id} value={m.id}>
-                        {m.nome} · {m.especialidade} {m.disponivelHoje ? "" : "(indisp. hoje)"}
-                      </SelectItem>
-                    ))}
+                    {medicos.map((m) => {
+                      const nome = getMedicoNome(m.id)
+                      const esp =
+                        m.especialidades?.map((e) => e.nome).join(", ") ?? ""
+                      return (
+                        <SelectItem key={m.id} value={String(m.id)}>
+                          {nome || `Médico #${m.id}`} · {esp}
+                        </SelectItem>
+                      )
+                    })}
                   </SelectContent>
                 </Select>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
-                  <Label htmlFor="r-data" className="text-sm font-semibold">Nova data</Label>
+                  <Label htmlFor="r-data" className="text-sm font-semibold">
+                    Nova data
+                  </Label>
                   <Input
                     id="r-data"
                     type="date"
@@ -451,7 +545,9 @@ export default function RecepcionistaPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="r-hora" className="text-sm font-semibold">Novo horário</Label>
+                  <Label htmlFor="r-hora" className="text-sm font-semibold">
+                    Novo horário
+                  </Label>
                   <Input
                     id="r-hora"
                     type="time"
@@ -463,10 +559,17 @@ export default function RecepcionistaPage() {
               </div>
 
               <DialogFooter className="gap-2 sm:gap-0">
-                <Button type="button" variant="outline" onClick={() => setRemarcarOpen(false)}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setRemarcarOpen(false)}
+                >
                   Cancelar
                 </Button>
-                <Button type="submit" className="bg-primary hover:bg-primary/90">
+                <Button
+                  type="submit"
+                  className="bg-primary hover:bg-primary/90"
+                >
                   Confirmar remarcação
                 </Button>
               </DialogFooter>

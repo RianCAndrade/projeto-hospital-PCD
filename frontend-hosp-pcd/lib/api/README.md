@@ -1,99 +1,134 @@
-# Camada de API - Acolher
+# Camada de API — Acolher
 
-Este diretorio centraliza toda a comunicacao com o backend.
-O frontend nunca chama `fetch` diretamente: ele consome o objeto `api`
-exportado por `lib/api/index.ts`, que respeita a interface `HospitalApi`.
+Toda a comunicação com o backend Laravel passa por este diretório.
+O frontend nunca chama `fetch` direto: usa o objeto `api` exportado
+em `lib/api/index.ts`, que respeita o contrato `HospitalApi`.
 
 ## Estrutura
 
 ```
 lib/api/
   index.ts     <- escolhe entre mock e real conforme NEXT_PUBLIC_API_MODE
-  types.ts     <- DTOs e contrato HospitalApi (compartilhado entre mock e real)
-  client.ts    <- wrapper de fetch + gerencia token (Bearer / Sanctum)
-  real.ts      <- implementacao que chama o Laravel
-  mock.ts      <- implementacao em memoria usada para desenvolvimento
+  types.ts     <- DTOs + contrato HospitalApi (compartilhado)
+  client.ts    <- fetch wrapper, token Sanctum, envelope { error, message, data }
+  real.ts      <- implementação que consome o Laravel
+  mock.ts      <- implementação em memória para desenvolvimento
 ```
 
-## Como ligar o Laravel (modo real)
+## Estado atual do backend Laravel (`backend-hosp-pcd/`)
 
-1. Crie um arquivo `.env.local` na raiz do projeto Next.js:
+### ✅ Implementado
 
+| Método | Rota              | Controller                       |
+|--------|-------------------|----------------------------------|
+| POST   | `/api/register`   | `RegisterController@register`    |
+
+Body aceito por `/register`:
+```json
+{
+  "nome": "Marina Oliveira",
+  "email": "marina@email.com",
+  "telefone": "(11) 98888-1111",
+  "senha": "...",
+  "tipo_usuario": "responsavel"
+}
+```
+
+`tipo_usuario` ∈ `admin | recepcionista | medico | responsavel | paciente`
+(ver `App\Enums\TiposUsuario`).
+
+Resposta de sucesso (`201`):
+```json
+{ "error": false, "message": "Cadastro realizado com sucesso", "data": { ...usuario } }
+```
+
+Resposta de erro (`422`):
+```json
+{ "error": true, "message": "email ja cadastrado" }
+```
+
+### ⏳ Pendente no backend (frontend já está pronto)
+
+Auth:
+- `POST /api/login`
+- `POST /api/logout` (auth:sanctum)
+- `GET  /api/me` (auth:sanctum)
+- `GET  /api/bootstrap`
+
+Recursos (todos sob `auth:sanctum`):
+- Pacientes — `/api/pacientes` (CRUD + `/meus`)
+- Responsáveis — `/api/responsaveis`
+- Médicos — `/api/medicos`
+- Especialidades — `/api/especialidades`
+- Tipos de deficiência — `/api/tipos-deficiencia`
+- Agendamentos — `/api/agendamentos` (+ `/status`, `/cancelar`, `/remarcar`)
+- Atendimentos — `/api/atendimentos`
+- Senhas — `/api/senhas` (+ `/status`, `/chamar`)
+- Usuários — `/api/usuarios`
+
+Os shapes esperados estão em `lib/types.ts` (modelos) e em
+`lib/api/types.ts` (DTOs e envelope `BackendResponse<T>`).
+
+## Como ligar o backend real
+
+1. `.env.local` na raiz do `frontend-hosp-pcd`:
    ```
    NEXT_PUBLIC_API_MODE=real
    NEXT_PUBLIC_API_URL=http://localhost:8000/api
    ```
 
-2. Garanta que o Laravel esteja com CORS liberado para a origem do front
-   (em `config/cors.php` ou `bootstrap/app.php`).
+2. Garanta CORS liberado para a origem do front no Laravel
+   (`config/cors.php`).
 
-3. Implemente as rotas listadas em `real.ts`. Sugestao de mapeamento:
+3. Reinicie o `next dev`. Pronto — o front passa a chamar o Laravel.
 
-   ```php
-   // routes/api.php
-   Route::post('/auth/login',    [AuthController::class, 'login']);
-   Route::post('/auth/register', [AuthController::class, 'register']);
+## Convenções de resposta
 
-   Route::middleware('auth:sanctum')->group(function () {
-       Route::post('/auth/logout', [AuthController::class, 'logout']);
-       Route::get ('/auth/me',     [AuthController::class, 'me']);
+Todas as rotas devem usar o envelope que o `RegisterController` já
+inaugurou. Os controllers novos podem seguir o mesmo padrão:
 
-       Route::get ('/bootstrap',   [BootstrapController::class, 'index']);
-
-       Route::get   ('/agendamentos',                   [AgendamentoController::class, 'index']);
-       Route::post  ('/agendamentos',                   [AgendamentoController::class, 'store']);
-       Route::patch ('/agendamentos/{id}/status',       [AgendamentoController::class, 'updateStatus']);
-       Route::patch ('/agendamentos/{id}/cancelar',     [AgendamentoController::class, 'cancel']);
-       Route::patch ('/agendamentos/{id}/remarcar',     [AgendamentoController::class, 'reschedule']);
-
-       Route::apiResource('medicos',  MedicoController::class)->only(['index','store','destroy']);
-       Route::get   ('/usuarios',                       [UsuarioController::class, 'index']);
-       Route::post  ('/usuarios/funcionarios',          [UsuarioController::class, 'storeFuncionario']);
-       Route::delete('/usuarios/{id}',                  [UsuarioController::class, 'destroy']);
-   });
-   ```
-
-4. Os shapes que o Laravel deve retornar estao em `lib/api/types.ts`
-   e em `lib/types.ts`. Se voce quiser, podemos gerar os Resource
-   classes do Laravel a partir desses tipos depois.
-
-## Autenticacao
-
-A implementacao real usa **Laravel Sanctum em modo token (Bearer)**.
-
-- O Laravel deve responder ao login com `{ usuario, token }`.
-- O frontend salva o token em `localStorage` (`acolher_token`).
-- Todas as requisicoes seguintes enviam `Authorization: Bearer {token}`.
-
-Se voce preferir Sanctum em modo SPA (cookies + CSRF), ajuste `client.ts`:
-
-```ts
-// remova o getToken/Authorization e habilite cookies:
-fetch(url, { credentials: "include", ... })
-// e adicione uma chamada inicial a /sanctum/csrf-cookie
+```php
+return response()->json([
+    'error'   => false,
+    'message' => 'OK',
+    'data'    => $payload,
+], 200);
 ```
 
-## Como remover o modo mock (apos ter o Laravel pronto)
+O `apiFetch` (em `client.ts`) desembrulha automaticamente: a
+camada de páginas só recebe o `data`. Quando vier `error: true`,
+ele lança `ApiError` com a `message` original.
 
-1. Apague `/lib/api/mock.ts`
-2. Apague `/lib/mock-data.ts`
-3. Edite `/lib/api/index.ts` deixando apenas:
+## Autenticação
 
+Sanctum em modo **token (Bearer)**.
+
+- O `/login` deve responder com `{ usuario, token }`.
+- O frontend salva o token em `localStorage` (`acolher_token`).
+- Toda requisição autenticada envia `Authorization: Bearer {token}`.
+
+Se preferir Sanctum em modo SPA (cookie + CSRF), ajuste
+`client.ts` para usar `credentials: "include"` e remova o
+`getToken/Authorization`.
+
+## Como adicionar um endpoint novo
+
+1. Defina o DTO em `types.ts` e adicione o método na interface
+   `HospitalApi`.
+2. Implemente em `real.ts` chamando `apiFetch`.
+3. Implemente em `mock.ts` mexendo no estado em memória.
+4. Use via `api.X.Y(...)` na página ou no `lib/store.tsx`.
+
+## Como remover o modo mock (quando o Laravel estiver completo)
+
+1. Apague `/lib/api/mock.ts` e `/lib/mock-data.ts`.
+2. Edite `/lib/api/index.ts` deixando só:
    ```ts
    export { realApi as api } from "./real"
    export { ApiError } from "./client"
    export type * from "./types"
    export const isUsingMockApi = false
    ```
-
-4. Em `/app/login/page.tsx`, remova o import de `credenciaisDemo`
-   e o painel de "Contas de demonstracao" (ele so aparece em mock).
-
-5. Defina `NEXT_PUBLIC_API_MODE=real` no ambiente.
-
-## Como adicionar novos endpoints
-
-1. Defina o DTO em `types.ts` e adicione o metodo na interface `HospitalApi`.
-2. Implemente em `real.ts` chamando `apiFetch`.
-3. Implemente em `mock.ts` mexendo no estado em memoria.
-4. Use via `api.X.Y(...)` no `lib/store.tsx` ou diretamente em uma pagina.
+3. Remova o painel "Contas de demonstração" da página de login
+   (e o import de `credenciaisDemo`).
+4. Defina `NEXT_PUBLIC_API_MODE=real` no ambiente.

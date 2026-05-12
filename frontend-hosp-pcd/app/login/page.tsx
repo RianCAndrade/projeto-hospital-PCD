@@ -5,11 +5,21 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useHospital } from "@/lib/store"
 import { credenciaisDemo } from "@/lib/mock-data"
+import { isUsingMockApi, ApiError } from "@/lib/api"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Heart, ArrowLeft, Eye, EyeOff, LogIn } from "lucide-react"
 import { toast } from "sonner"
+import type { TipoUsuario } from "@/lib/types"
+
+const rotasPorTipo: Record<TipoUsuario, string> = {
+  admin: "/admin",
+  recepcionista: "/recepcionista",
+  medico: "/medico",
+  responsavel: "/paciente",
+  paciente: "/paciente",
+}
 
 export default function LoginPage() {
   const { login } = useHospital()
@@ -22,28 +32,23 @@ export default function LoginPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setCarregando(true)
-
-    // pequena espera simulada para feedback visual
-    await new Promise((r) => setTimeout(r, 400))
-
-    const usuario = login(email, senha)
-    if (!usuario) {
-      toast.error("Email ou senha inválidos", {
-        description: "Verifique seus dados ou use uma conta de demonstração abaixo.",
-      })
+    try {
+      const usuario = await login(email, senha)
+      if (!usuario) {
+        toast.error("Email ou senha inválidos")
+        return
+      }
+      toast.success(`Bem-vinda, ${usuario.nome.split(" ")[0]}!`)
+      router.push(rotasPorTipo[usuario.tipo_usuario] ?? "/")
+    } catch (err) {
+      const msg =
+        err instanceof ApiError
+          ? err.message
+          : "Não foi possível entrar. Tente novamente."
+      toast.error(msg)
+    } finally {
       setCarregando(false)
-      return
     }
-
-    toast.success(`Bem-vinda, ${usuario.nome.split(" ")[0]}!`)
-    setCarregando(false)
-    const rotas: Record<string, string> = {
-      paciente: "/paciente",
-      recepcionista: "/recepcionista",
-      medico: "/medico",
-      admin: "/admin",
-    }
-    router.push(rotas[usuario.perfil] ?? "/")
   }
 
   function entrarComoDemo(emailDemo: string) {
@@ -56,8 +61,14 @@ export default function LoginPage() {
       {/* Lado visual */}
       <aside className="hidden lg:flex relative bg-primary text-primary-foreground p-12 flex-col justify-between overflow-hidden">
         <div className="absolute inset-0 -z-10">
-          <div className="absolute top-1/4 right-0 h-96 w-96 rounded-full bg-accent/30 blur-3xl" aria-hidden="true" />
-          <div className="absolute bottom-0 left-0 h-96 w-96 rounded-full bg-destructive/15 blur-3xl" aria-hidden="true" />
+          <div
+            className="absolute top-1/4 right-0 h-96 w-96 rounded-full bg-accent/30 blur-3xl"
+            aria-hidden="true"
+          />
+          <div
+            className="absolute bottom-0 left-0 h-96 w-96 rounded-full bg-destructive/15 blur-3xl"
+            aria-hidden="true"
+          />
         </div>
 
         <Link href="/" className="flex items-center gap-2 font-display font-bold text-xl">
@@ -68,7 +79,9 @@ export default function LoginPage() {
         </Link>
 
         <div>
-          <p className="text-sm uppercase tracking-widest text-primary-foreground/70 font-bold">Bem-vinda de volta</p>
+          <p className="text-sm uppercase tracking-widest text-primary-foreground/70 font-bold">
+            Bem-vinda de volta
+          </p>
           <h2 className="font-display text-4xl xl:text-5xl font-bold mt-2 leading-tight text-pretty">
             O cuidado da sua criança <span className="text-accent">continua aqui</span>.
           </h2>
@@ -77,25 +90,33 @@ export default function LoginPage() {
           </p>
         </div>
 
-        <div className="rounded-2xl bg-primary-foreground/10 backdrop-blur p-6 border border-primary-foreground/15">
-          <p className="text-xs uppercase tracking-widest text-primary-foreground/60 font-bold">Contas de demonstração</p>
-          <p className="text-sm text-primary-foreground/80 mt-1 mb-4">
-            Toque em uma das contas para preencher e testar cada perfil.
-          </p>
-          <div className="grid grid-cols-2 gap-2">
-            {credenciaisDemo.map((c) => (
-              <button
-                key={c.email}
-                onClick={() => entrarComoDemo(c.email)}
-                className="text-left rounded-xl bg-primary-foreground/5 hover:bg-primary-foreground/15 transition-colors p-3 border border-primary-foreground/10"
-              >
-                <p className="text-xs uppercase tracking-wider text-accent font-bold">{c.perfil}</p>
-                <p className="text-sm font-semibold mt-0.5">{c.nome}</p>
-                <p className="text-xs text-primary-foreground/70 truncate">{c.email}</p>
-              </button>
-            ))}
+        {isUsingMockApi && (
+          <div className="rounded-2xl bg-primary-foreground/10 backdrop-blur p-6 border border-primary-foreground/15">
+            <p className="text-xs uppercase tracking-widest text-primary-foreground/60 font-bold">
+              Contas de demonstração (modo mock)
+            </p>
+            <p className="text-sm text-primary-foreground/80 mt-1 mb-4">
+              Toque em uma das contas para preencher e testar cada perfil.
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              {credenciaisDemo.map((c) => (
+                <button
+                  key={c.email}
+                  onClick={() => entrarComoDemo(c.email)}
+                  className="text-left rounded-xl bg-primary-foreground/5 hover:bg-primary-foreground/15 transition-colors p-3 border border-primary-foreground/10"
+                >
+                  <p className="text-xs uppercase tracking-wider text-accent font-bold">
+                    {c.tipo_usuario}
+                  </p>
+                  <p className="text-sm font-semibold mt-0.5">{c.nome}</p>
+                  <p className="text-xs text-primary-foreground/70 truncate">
+                    {c.email}
+                  </p>
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
       </aside>
 
       {/* Formulário */}
@@ -111,7 +132,9 @@ export default function LoginPage() {
 
           <div className="mt-10">
             <p className="text-sm uppercase tracking-widest text-accent font-bold">Entrar</p>
-            <h1 className="font-display text-4xl font-bold mt-2 text-pretty">Acesse sua conta</h1>
+            <h1 className="font-display text-4xl font-bold mt-2 text-pretty">
+              Acesse sua conta
+            </h1>
             <p className="mt-3 text-muted-foreground leading-relaxed">
               Use seu email e senha cadastrados. Não tem conta?{" "}
               <Link href="/cadastro" className="text-primary font-semibold hover:underline">
@@ -182,22 +205,30 @@ export default function LoginPage() {
               {carregando ? "Entrando..." : "Entrar"}
             </Button>
 
-            <div className="lg:hidden rounded-xl border border-border bg-secondary/40 p-4">
-              <p className="text-xs uppercase tracking-widest text-accent font-bold">Contas de demonstração</p>
-              <div className="mt-3 grid grid-cols-2 gap-2">
-                {credenciaisDemo.map((c) => (
-                  <button
-                    type="button"
-                    key={c.email}
-                    onClick={() => entrarComoDemo(c.email)}
-                    className="text-left rounded-lg bg-card hover:bg-card/70 p-2 border border-border"
-                  >
-                    <p className="text-xs uppercase tracking-wider text-accent font-bold">{c.perfil}</p>
-                    <p className="text-sm font-semibold mt-0.5 truncate">{c.nome}</p>
-                  </button>
-                ))}
+            {isUsingMockApi && (
+              <div className="lg:hidden rounded-xl border border-border bg-secondary/40 p-4">
+                <p className="text-xs uppercase tracking-widest text-accent font-bold">
+                  Contas de demonstração (modo mock)
+                </p>
+                <div className="mt-3 grid grid-cols-2 gap-2">
+                  {credenciaisDemo.map((c) => (
+                    <button
+                      type="button"
+                      key={c.email}
+                      onClick={() => entrarComoDemo(c.email)}
+                      className="text-left rounded-lg bg-card hover:bg-card/70 p-2 border border-border"
+                    >
+                      <p className="text-xs uppercase tracking-wider text-accent font-bold">
+                        {c.tipo_usuario}
+                      </p>
+                      <p className="text-sm font-semibold mt-0.5 truncate">
+                        {c.nome}
+                      </p>
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
           </form>
         </div>
       </main>
