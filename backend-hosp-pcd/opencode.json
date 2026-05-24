@@ -5,6 +5,10 @@
             "type": "local",
             "enabled": true,
             "command": [
+                "docker",
+                "exec",
+                "-i",
+                "hospital-pcd-app",
                 "php",
                 "artisan",
                 "boost:mcp"

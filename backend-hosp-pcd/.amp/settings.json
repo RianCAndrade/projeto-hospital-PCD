@@ -5,7 +5,7 @@
             "args": [
                 "exec",
                 "-i",
-                "hospital-pcd",
+                "hospital-pcd-app",
                 "php",
                 "artisan",
                 "boost:mcp"
