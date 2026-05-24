@@ -18,11 +18,20 @@ class RegisterController
     {
         try {
             $validated = $request->validate([
-                'nome' => 'required|string',
-                'email' => 'required|string|email|unique:tbusuarios',
-                'telefone' => 'required|string',
-                'senha' => 'required|string',
-                'tipo_usuario' => ['required', Rule::enum(TiposUsuario::class)],
+                'nome' =>       'required|string',
+                'cpf' =>        'required|string|unique:tbusuarios',
+                'email' =>      'required|string|email|unique:tbusuarios',
+                'senha' =>      'required|string',
+                'telefone' =>   'nullable|string',
+                // 'tipo_usuario' => Rule::in(TiposUsuario::Paciente),
+                'data_nascimento' =>            'required|date',
+                'sexo' =>                       'required|string',
+                'possui_autismo' =>             'required|boolean',
+                'necessita_acessibilidade' =>   'required|boolean',
+                'usa_cadeira_rodas' =>          'required|boolean',
+                'necessita_acompanhante' =>     'required|boolean',
+                'observacoes' =>                'nullable|string',
+                'observacoes_comunicacao' =>    'nullable|string',
             ]);
 
             
@@ -46,7 +55,7 @@ class RegisterController
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json([
                 'error' => true,
-                'message' => 'email ja cadastrado',
+                'message' => 'Erro inesperado ao cadastrar usuario ' . $e->getMessage(),
             ], 422);
         } catch (\Exception $e) {
             return response()->json([

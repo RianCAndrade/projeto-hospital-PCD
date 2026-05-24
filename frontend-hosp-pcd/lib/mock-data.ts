@@ -109,6 +109,14 @@ export const usuariosMock: Usuario[] = [
     telefone: "(11) 94444-5555",
     tipo_usuario: "admin",
   },
+  // RH
+  {
+    id: 12,
+    nome: "Helena RH",
+    email: "rh@acolher.com",
+    telefone: "(11) 94444-6666",
+    tipo_usuario: "rh",
+  },
   // Médicos como usuários (linha em tbusuarios + tbmedicos)
   {
     id: 6,
@@ -416,5 +424,11 @@ export const credenciaisDemo = [
     email: "admin@acolher.com",
     senha: "123456",
     nome: "Roberto (Admin)",
+  },
+  {
+    tipo_usuario: "rh",
+    email: "rh@acolher.com",
+    senha: "123456",
+    nome: "Helena (RH)",
   },
 ] as const

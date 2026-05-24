@@ -15,6 +15,7 @@ import type { TipoUsuario } from "@/lib/types"
 
 const rotasPorTipo: Record<TipoUsuario, string> = {
   admin: "/admin",
+  rh: "/rh",
   recepcionista: "/recepcionista",
   medico: "/medico",
   responsavel: "/paciente",

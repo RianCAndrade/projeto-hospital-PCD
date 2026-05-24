@@ -27,6 +27,7 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -85,6 +86,7 @@ export default function AdminPage() {
 
   const [novoMedicoOpen, setNovoMedicoOpen] = useState(false)
   const [novoFuncOpen, setNovoFuncOpen] = useState(false)
+  const [novoPacOpen, setNovoPacOpen] = useState(false)
 
   const [medNome, setMedNome] = useState("")
   const [medEmail, setMedEmail] = useState("")
@@ -99,6 +101,12 @@ export default function AdminPage() {
   const [funcTel, setFuncTel] = useState("")
   const [funcSenha, setFuncSenha] = useState("")
   const [funcTipo, setFuncTipo] = useState<TipoUsuario>("recepcionista")
+
+  const [pacNome, setPacNome] = useState("")
+  const [pacEmail, setPacEmail] = useState("")
+  const [pacTel, setPacTel] = useState("")
+  const [pacSenha, setPacSenha] = useState("")
+  const [pacPrecisaResp, setPacPrecisaResp] = useState(false)
 
   useEffect(() => {
     if (!usuarioLogado || usuarioLogado.tipo_usuario !== "admin") {
@@ -250,7 +258,9 @@ export default function AdminPage() {
       toast.success(
         funcTipo === "admin"
           ? "Administrador cadastrado."
-          : "Recepcionista cadastrado.",
+          : funcTipo === "rh"
+            ? "RH cadastrado(a)."
+            : "Recepcionista cadastrado(a).",
       )
       setFuncNome("")
       setFuncEmail("")
@@ -266,6 +276,39 @@ export default function AdminPage() {
     }
   }
 
+  async function handleCriarPaciente(e: React.FormEvent) {
+    e.preventDefault()
+    if (!pacNome || !pacEmail || !pacSenha) {
+      toast.error("Preencha nome, email e senha.")
+      return
+    }
+    if (pacSenha.length < 6) {
+      toast.error("A senha deve ter ao menos 6 caracteres.")
+      return
+    }
+    try {
+      await cadastrar({
+        nome: pacNome,
+        email: pacEmail,
+        telefone: pacTel,
+        senha: pacSenha,
+        tipo_usuario: "paciente",
+        precisa_responsavel: pacPrecisaResp,
+      })
+      toast.success("Paciente cadastrado(a) com sucesso.")
+      setPacNome("")
+      setPacEmail("")
+      setPacTel("")
+      setPacSenha("")
+      setPacPrecisaResp(false)
+      setNovoPacOpen(false)
+    } catch (err) {
+      const msg =
+        err instanceof ApiError ? err.message : "Erro ao cadastrar paciente."
+      toast.error(msg)
+    }
+  }
+
   if (!usuarioLogado) return null
 
   const responsaveis = usuarios.filter(
@@ -274,6 +317,7 @@ export default function AdminPage() {
   const recepcionistas = usuarios.filter(
     (u) => u.tipo_usuario === "recepcionista",
   )
+  const rhs = usuarios.filter((u) => u.tipo_usuario === "rh")
   const admins = usuarios.filter((u) => u.tipo_usuario === "admin")
 
   const pieColors = [
@@ -599,10 +643,17 @@ export default function AdminPage() {
             {/* Pacientes / responsáveis */}
             <TabsContent value="usuarios" className="mt-4">
               <div className="rounded-2xl border-2 border-border bg-card overflow-hidden">
-                <div className="px-5 py-4 border-b border-border">
+                <div className="px-5 py-4 flex items-center justify-between border-b border-border flex-wrap gap-2">
                   <h3 className="font-display font-bold">
                     Responsáveis e pacientes ({responsaveis.length})
                   </h3>
+                  <Button
+                    onClick={() => setNovoPacOpen(true)}
+                    className="bg-primary hover:bg-primary/90 gap-2"
+                  >
+                    <UserPlus size={16} aria-hidden="true" />
+                    Novo paciente
+                  </Button>
                 </div>
                 <div className="overflow-x-auto">
                   <Table>
@@ -668,7 +719,8 @@ export default function AdminPage() {
               <div className="rounded-2xl border-2 border-border bg-card overflow-hidden">
                 <div className="px-5 py-4 flex items-center justify-between border-b border-border flex-wrap gap-2">
                   <h3 className="font-display font-bold">
-                    Funcionários ({recepcionistas.length + admins.length})
+                    Funcionários (
+                    {recepcionistas.length + rhs.length + admins.length})
                   </h3>
                   <Button
                     onClick={() => setNovoFuncOpen(true)}
@@ -690,7 +742,7 @@ export default function AdminPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {[...recepcionistas, ...admins].map((u) => (
+                      {[...recepcionistas, ...rhs, ...admins].map((u) => (
                         <TableRow key={u.id}>
                           <TableCell className="font-semibold">
                             {u.nome}
@@ -700,7 +752,9 @@ export default function AdminPage() {
                               className={`text-xs font-bold rounded-full px-2 py-1 ${
                                 u.tipo_usuario === "admin"
                                   ? "bg-destructive/10 text-destructive"
-                                  : "bg-primary/10 text-primary"
+                                  : u.tipo_usuario === "rh"
+                                    ? "bg-accent/15 text-accent"
+                                    : "bg-primary/10 text-primary"
                               }`}
                             >
                               {u.tipo_usuario}
@@ -936,6 +990,7 @@ export default function AdminPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="recepcionista">recepcionista</SelectItem>
+                    <SelectItem value="rh">rh</SelectItem>
                     <SelectItem value="admin">admin</SelectItem>
                   </SelectContent>
                 </Select>
@@ -955,6 +1010,110 @@ export default function AdminPage() {
                 className="bg-accent hover:bg-accent/90 text-accent-foreground"
               >
                 Cadastrar funcionário
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal: cadastrar paciente */}
+      <Dialog open={novoPacOpen} onOpenChange={setNovoPacOpen}>
+        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="font-display text-2xl">
+              Cadastrar paciente
+            </DialogTitle>
+            <DialogDescription>
+              Cria conta com <code>tipo_usuario = paciente</code>. Marque
+              "precisa de responsável" para crianças/adolescentes PCD.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleCriarPaciente} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="adm-p-nome" className="text-sm font-semibold">
+                Nome completo
+              </Label>
+              <Input
+                id="adm-p-nome"
+                value={pacNome}
+                onChange={(e) => setPacNome(e.target.value)}
+                className="h-11"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label htmlFor="adm-p-email" className="text-sm font-semibold">
+                  Email
+                </Label>
+                <Input
+                  id="adm-p-email"
+                  type="email"
+                  value={pacEmail}
+                  onChange={(e) => setPacEmail(e.target.value)}
+                  className="h-11"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="adm-p-tel" className="text-sm font-semibold">
+                  Telefone
+                </Label>
+                <Input
+                  id="adm-p-tel"
+                  value={pacTel}
+                  onChange={(e) => setPacTel(e.target.value)}
+                  className="h-11"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="adm-p-senha" className="text-sm font-semibold">
+                Senha
+              </Label>
+              <Input
+                id="adm-p-senha"
+                type="password"
+                value={pacSenha}
+                onChange={(e) => setPacSenha(e.target.value)}
+                placeholder="Mínimo 6 caracteres"
+                className="h-11"
+              />
+            </div>
+
+            <label
+              htmlFor="adm-p-precisa-resp"
+              className="flex items-start gap-3 cursor-pointer rounded-xl border-2 border-border bg-card p-3 has-[input:checked]:border-primary has-[input:checked]:bg-primary/5 transition-colors"
+            >
+              <input
+                id="adm-p-precisa-resp"
+                type="checkbox"
+                checked={pacPrecisaResp}
+                onChange={(e) => setPacPrecisaResp(e.target.checked)}
+                className="mt-1 h-5 w-5 rounded border-2 border-border accent-primary"
+              />
+              <span className="text-sm leading-relaxed">
+                <span className="font-display font-bold block">
+                  Precisa de responsável vinculado
+                </span>
+                <span className="text-muted-foreground">
+                  Marque para crianças/adolescentes PCD.
+                </span>
+              </span>
+            </label>
+
+            <DialogFooter className="gap-2 sm:gap-0">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setNovoPacOpen(false)}
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="submit"
+                className="bg-primary hover:bg-primary/90"
+              >
+                Cadastrar paciente
               </Button>
             </DialogFooter>
           </form>

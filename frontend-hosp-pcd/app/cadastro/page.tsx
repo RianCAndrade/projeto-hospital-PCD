@@ -7,45 +7,26 @@ import { useHospital } from "@/lib/store"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import { Heart, ArrowLeft, UserPlus, ShieldCheck } from "lucide-react"
+import { Heart, ArrowLeft, UserPlus, ShieldCheck, HeartHandshake } from "lucide-react"
 import { toast } from "sonner"
 import { ApiError } from "@/lib/api"
-import type { TipoUsuario } from "@/lib/types"
 
 /**
- * Cadastro de usuário.
+ * Cadastro público.
  *
- * Hoje envia para o backend exatamente os campos validados pelo
- * `RegisterController@register`:
+ * Regra de negócio:
+ *   - Quem se autocadastra no site é SEMPRE `tipo_usuario = "paciente"`.
+ *   - Marca `precisa_responsavel` se for criança/adolescente PCD que
+ *     precisa de um responsável vinculado (responsável será cadastrado
+ *     em etapa posterior, no painel do paciente).
  *
- *   { nome, email, telefone, senha, tipo_usuario }
+ * Funcionário (médico, recepcionista) NUNCA é cadastrado por aqui —
+ * isso é feito pelo painel do RH (ou do Admin Geral).
  *
- * O cadastro de pacientes (filhos) e o vínculo de responsável serão
- * feitos em telas próprias depois — eles dependem de `POST /pacientes`
- * e `POST /responsaveis`, ainda não implementados no backend.
+ * Payload enviado para `POST /api/register`:
+ *   { nome, email, telefone, senha, tipo_usuario: "paciente",
+ *     precisa_responsavel }
  */
-
-const tiposUsuarioPublicos: { value: TipoUsuario; label: string; desc: string }[] =
-  [
-    {
-      value: "responsavel",
-      label: "Responsável (mãe, pai ou cuidador)",
-      desc: "Cadastra crianças PCD e marca consultas para elas.",
-    },
-    {
-      value: "paciente",
-      label: "Paciente adulto",
-      desc: "Maior de idade que se consulta sozinho.",
-    },
-  ]
-
 export default function CadastroPage() {
   const router = useRouter()
   const { cadastrar } = useHospital()
@@ -55,8 +36,7 @@ export default function CadastroPage() {
   const [telefone, setTelefone] = useState("")
   const [senha, setSenha] = useState("")
   const [confirmarSenha, setConfirmarSenha] = useState("")
-  const [tipoUsuario, setTipoUsuario] =
-    useState<TipoUsuario>("responsavel")
+  const [precisaResponsavel, setPrecisaResponsavel] = useState(false)
   const [aceiteTermos, setAceiteTermos] = useState(false)
   const [carregando, setCarregando] = useState(false)
 
@@ -82,11 +62,14 @@ export default function CadastroPage() {
         email,
         telefone,
         senha,
-        tipo_usuario: tipoUsuario,
+        tipo_usuario: "paciente",
+        precisa_responsavel: precisaResponsavel,
       })
 
       toast.success("Cadastro realizado com sucesso!", {
-        description: "Use seu email e senha para entrar.",
+        description: precisaResponsavel
+          ? "Após o login, vincule o responsável no seu painel."
+          : "Use seu email e senha para entrar.",
       })
       router.push("/login")
     } catch (err) {
@@ -133,60 +116,67 @@ export default function CadastroPage() {
 
         <div className="mb-10">
           <p className="text-sm uppercase tracking-widest text-accent font-bold">
-            Cadastro
+            Cadastro de paciente
           </p>
           <h1 className="font-display text-4xl md:text-5xl font-bold mt-2 leading-tight text-pretty">
             Bem-vinda ao <span className="text-primary">Acolher</span>.
           </h1>
           <p className="mt-3 text-muted-foreground leading-relaxed text-lg max-w-2xl">
-            Crie sua conta. Depois você poderá cadastrar suas crianças e
-            agendar consultas com nossos especialistas.
+            Crie sua conta de paciente. Se precisar de um responsável
+            vinculado (mãe, pai, cuidador), basta marcar a opção abaixo —
+            você poderá vinculá-lo após o login.
+          </p>
+          <p className="mt-2 text-sm text-muted-foreground">
+            É funcionário (médico, recepcionista ou RH)? Sua conta é criada
+            pelo RH ou pela Administração — não use este formulário.
           </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-10" noValidate>
-          {/* Tipo de conta */}
+          {/* Responsável */}
           <section
-            aria-labelledby="tipo-conta"
+            aria-labelledby="precisa-responsavel"
             className="rounded-2xl border-2 border-accent/30 bg-accent/5 p-6 sm:p-8"
           >
-            <div className="flex items-center gap-3 mb-6">
+            <div className="flex items-center gap-3 mb-4">
               <span className="grid h-10 w-10 place-items-center rounded-xl bg-accent text-accent-foreground">
-                <ShieldCheck size={20} aria-hidden="true" />
+                <HeartHandshake size={20} aria-hidden="true" />
               </span>
               <div>
-                <h2 id="tipo-conta" className="font-display text-xl font-bold">
-                  Tipo de conta
+                <h2
+                  id="precisa-responsavel"
+                  className="font-display text-xl font-bold"
+                >
+                  Preciso de um responsável?
                 </h2>
                 <p className="text-sm text-muted-foreground">
-                  Escolha como você vai usar o Acolher.
+                  Marque se você é criança/adolescente ou se precisa que
+                  outra pessoa acompanhe e marque consultas por você.
                 </p>
               </div>
             </div>
 
-            <div className="grid sm:grid-cols-2 gap-3">
-              {tiposUsuarioPublicos.map((t) => {
-                const ativo = tipoUsuario === t.value
-                return (
-                  <button
-                    type="button"
-                    key={t.value}
-                    onClick={() => setTipoUsuario(t.value)}
-                    className={`text-left rounded-xl border-2 p-4 transition-colors ${
-                      ativo
-                        ? "border-primary bg-primary/10"
-                        : "border-border bg-card hover:border-primary/30"
-                    }`}
-                    aria-pressed={ativo}
-                  >
-                    <p className="font-display font-bold">{t.label}</p>
-                    <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
-                      {t.desc}
-                    </p>
-                  </button>
-                )
-              })}
-            </div>
+            <label
+              htmlFor="precisa-resp"
+              className="flex items-start gap-3 cursor-pointer rounded-xl border-2 border-border bg-card p-4 has-[input:checked]:border-primary has-[input:checked]:bg-primary/5 transition-colors"
+            >
+              <input
+                id="precisa-resp"
+                type="checkbox"
+                checked={precisaResponsavel}
+                onChange={(e) => setPrecisaResponsavel(e.target.checked)}
+                className="mt-1 h-5 w-5 rounded border-2 border-border accent-primary"
+              />
+              <span className="text-sm leading-relaxed">
+                <span className="font-display font-bold block">
+                  Sim, preciso vincular um responsável
+                </span>
+                <span className="text-muted-foreground">
+                  Após criar a conta, você poderá cadastrar o responsável
+                  (nome, CPF, parentesco) no seu painel.
+                </span>
+              </span>
+            </label>
           </section>
 
           {/* Dados pessoais */}
@@ -206,7 +196,7 @@ export default function CadastroPage() {
                   Seus dados
                 </h2>
                 <p className="text-sm text-muted-foreground">
-                  Esses são os campos que o backend valida em <code>/api/register</code>.
+                  {/* Esses campos vão para <code>POST /api/register</code>. */}
                 </p>
               </div>
             </div>
@@ -257,27 +247,6 @@ export default function CadastroPage() {
                   onChange={(e) => setTelefone(e.target.value)}
                   className="h-12 text-base"
                 />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="tipo-usuario" className="text-sm font-semibold">
-                  tipo_usuario
-                </Label>
-                <Select
-                  value={tipoUsuario}
-                  onValueChange={(v) => setTipoUsuario(v as TipoUsuario)}
-                >
-                  <SelectTrigger id="tipo-usuario" className="h-12 text-base">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {tiposUsuarioPublicos.map((t) => (
-                      <SelectItem key={t.value} value={t.value}>
-                        {t.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
               </div>
 
               <div className="space-y-2">

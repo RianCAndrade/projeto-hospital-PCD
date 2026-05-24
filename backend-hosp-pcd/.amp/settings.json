@@ -1,8 +1,12 @@
 {
     "amp.mcpServers": {
         "laravel-boost": {
-            "command": "php",
+            "command": "docker",
             "args": [
+                "exec",
+                "-i",
+                "hospital-pcd",
+                "php",
                 "artisan",
                 "boost:mcp"
             ]

@@ -14,9 +14,10 @@ Project hospital_pcd {
 Table tbusuarios {
   id            bigint        [pk, increment]
   nome          varchar       [not null]
+  cpf           varchar       [unique, not null]
   email         varchar       [unique, not null]
-  telefone      varchar       [null]
   senha         varchar       [not null]
+  telefone      varchar       [null]
   tipo_usuario  varchar(30)   [not null, default: 'paciente', note: 'admin | recepcionista | medico | responsavel | paciente']
   created_at    timestamp
   updated_at    timestamp

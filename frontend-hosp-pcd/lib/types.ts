@@ -19,6 +19,7 @@
 /** App\Enums\TiposUsuario */
 export type TipoUsuario =
   | "admin"
+  | "rh"
   | "recepcionista"
   | "medico"
   | "responsavel"

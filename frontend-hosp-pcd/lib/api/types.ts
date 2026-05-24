@@ -62,6 +62,13 @@ export interface RegisterDto {
   telefone: string
   senha: string
   tipo_usuario: TipoUsuario
+  /**
+   * Usado apenas no autocadastro público do paciente.
+   * Quando `true`, o backend deve marcar este usuário como
+   * "aguardando vinculo de responsavel" — o vínculo em
+   * `tbresponsavel_paciente` é criado em etapa posterior.
+   */
+  precisa_responsavel?: boolean
 }
 
 /**

@@ -38,6 +38,7 @@ import {
   Filter,
   CalendarClock,
   X,
+  UserPlus,
 } from "lucide-react"
 import { toast } from "sonner"
 import type { Agendamento } from "@/lib/types"
@@ -69,6 +70,7 @@ export default function RecepcionistaPage() {
     getPaciente,
     remarcarAgendamento,
     cancelarAgendamento,
+    cadastrar,
   } = useHospital()
   const [busca, setBusca] = useState("")
   const [filtroEspecialidade, setFiltroEspecialidade] = useState<string>("todas")
@@ -79,6 +81,14 @@ export default function RecepcionistaPage() {
   const [novaData, setNovaData] = useState("")
   const [novaHora, setNovaHora] = useState("")
   const [novoMedico, setNovoMedico] = useState<string>("")
+
+  // Cadastro de paciente presencial
+  const [novoPacOpen, setNovoPacOpen] = useState(false)
+  const [pacNome, setPacNome] = useState("")
+  const [pacEmail, setPacEmail] = useState("")
+  const [pacTel, setPacTel] = useState("")
+  const [pacSenha, setPacSenha] = useState("")
+  const [pacPrecisaResp, setPacPrecisaResp] = useState(false)
 
   useEffect(() => {
     if (!usuarioLogado || usuarioLogado.tipo_usuario !== "recepcionista") {
@@ -144,6 +154,43 @@ export default function RecepcionistaPage() {
     setNovaHora("")
     setNovoMedico(String(a.medico_id))
     setRemarcarOpen(true)
+  }
+
+  async function handleCadastrarPacientePresencial(e: React.FormEvent) {
+    e.preventDefault()
+    if (!pacNome || !pacEmail || !pacSenha) {
+      toast.error("Preencha nome, email e senha.")
+      return
+    }
+    if (pacSenha.length < 6) {
+      toast.error("A senha deve ter ao menos 6 caracteres.")
+      return
+    }
+    try {
+      await cadastrar({
+        nome: pacNome,
+        email: pacEmail,
+        telefone: pacTel,
+        senha: pacSenha,
+        tipo_usuario: "paciente",
+        precisa_responsavel: pacPrecisaResp,
+      })
+      toast.success("Paciente cadastrado(a) com sucesso.", {
+        description: pacPrecisaResp
+          ? "Lembre de vincular o responsável depois."
+          : "A conta já pode ser usada para agendamentos.",
+      })
+      setPacNome("")
+      setPacEmail("")
+      setPacTel("")
+      setPacSenha("")
+      setPacPrecisaResp(false)
+      setNovoPacOpen(false)
+    } catch (err) {
+      const msg =
+        err instanceof ApiError ? err.message : "Erro ao cadastrar paciente."
+      toast.error(msg)
+    }
   }
 
   async function confirmarRemarcacao(e: React.FormEvent) {
@@ -243,6 +290,31 @@ export default function RecepcionistaPage() {
               <p className="font-display text-4xl font-bold mt-3">{valor}</p>
             </article>
           ))}
+        </section>
+
+        {/* Ações rápidas */}
+        <section
+          aria-label="Ações da recepção"
+          className="rounded-2xl border-2 border-accent/30 bg-accent/5 p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
+        >
+          <div>
+            <p className="text-xs uppercase tracking-widest text-accent font-bold">
+              Atendimento presencial
+            </p>
+            <h2 className="font-display text-lg font-bold mt-1">
+              Paciente chegou sem cadastro?
+            </h2>
+            <p className="text-sm text-muted-foreground mt-1">
+              Crie a conta agora para liberar o agendamento.
+            </p>
+          </div>
+          <Button
+            onClick={() => setNovoPacOpen(true)}
+            className="bg-accent hover:bg-accent/90 text-accent-foreground gap-2 self-start sm:self-auto"
+          >
+            <UserPlus size={16} aria-hidden="true" />
+            Cadastrar paciente
+          </Button>
         </section>
 
         {/* Filtros */}
@@ -575,6 +647,118 @@ export default function RecepcionistaPage() {
               </DialogFooter>
             </form>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal: cadastro de paciente presencial */}
+      <Dialog open={novoPacOpen} onOpenChange={setNovoPacOpen}>
+        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="font-display text-2xl">
+              Cadastrar paciente presencial
+            </DialogTitle>
+            <DialogDescription>
+              Cria conta com <code>tipo_usuario = paciente</code>. Marque
+              "precisa de responsável" se for criança/adolescente PCD.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form
+            onSubmit={handleCadastrarPacientePresencial}
+            className="space-y-4"
+          >
+            <div className="space-y-2">
+              <Label htmlFor="p-nome" className="text-sm font-semibold">
+                Nome completo do paciente
+              </Label>
+              <Input
+                id="p-nome"
+                value={pacNome}
+                onChange={(e) => setPacNome(e.target.value)}
+                placeholder="Ex.: Maria Silva"
+                className="h-11"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label htmlFor="p-email" className="text-sm font-semibold">
+                  Email
+                </Label>
+                <Input
+                  id="p-email"
+                  type="email"
+                  value={pacEmail}
+                  onChange={(e) => setPacEmail(e.target.value)}
+                  className="h-11"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="p-tel" className="text-sm font-semibold">
+                  Telefone
+                </Label>
+                <Input
+                  id="p-tel"
+                  value={pacTel}
+                  onChange={(e) => setPacTel(e.target.value)}
+                  className="h-11"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="p-senha" className="text-sm font-semibold">
+                Senha provisória
+              </Label>
+              <Input
+                id="p-senha"
+                type="password"
+                value={pacSenha}
+                onChange={(e) => setPacSenha(e.target.value)}
+                placeholder="Mínimo 6 caracteres"
+                className="h-11"
+              />
+              <p className="text-xs text-muted-foreground">
+                Oriente o paciente a trocar a senha no primeiro login.
+              </p>
+            </div>
+
+            <label
+              htmlFor="p-precisa-resp"
+              className="flex items-start gap-3 cursor-pointer rounded-xl border-2 border-border bg-card p-3 has-[input:checked]:border-primary has-[input:checked]:bg-primary/5 transition-colors"
+            >
+              <input
+                id="p-precisa-resp"
+                type="checkbox"
+                checked={pacPrecisaResp}
+                onChange={(e) => setPacPrecisaResp(e.target.checked)}
+                className="mt-1 h-5 w-5 rounded border-2 border-border accent-primary"
+              />
+              <span className="text-sm leading-relaxed">
+                <span className="font-display font-bold block">
+                  Precisa de responsável vinculado
+                </span>
+                <span className="text-muted-foreground">
+                  Marque para crianças/adolescentes PCD. O vínculo pode ser
+                  feito em seguida.
+                </span>
+              </span>
+            </label>
+
+            <DialogFooter className="gap-2 sm:gap-0">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setNovoPacOpen(false)}
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="submit"
+                className="bg-accent hover:bg-accent/90 text-accent-foreground"
+              >
+                Cadastrar paciente
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
     </div>

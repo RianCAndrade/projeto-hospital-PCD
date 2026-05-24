@@ -16,9 +16,10 @@ return new class extends Migration
             $table->id();
 
             $table->string('nome');
+            $table->string('cpf')->unique();
             $table->string('email')->unique();
-            $table->string('telefone')->nullable();
             $table->string('senha');
+            $table->string('telefone')->nullable();
 
             $table->string('tipo_usuario', 30)->default(TiposUsuario::Paciente->value);
 
