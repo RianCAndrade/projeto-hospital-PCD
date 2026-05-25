@@ -18,8 +18,8 @@ Route::middleware('auth:sanctum')->group(function (){
     // Rotas usuario
     Route::prefix('me')->group(function (){
         Route::get('/', [PerfilController::class, 'index']);
-        Route::put('/update', [PerfilController::class, 'update']);
-        Route::delete('/delete', [PerfilController::class, 'destroy']);
+        Route::put('/update/{id}', [PerfilController::class, 'update']);
+        Route::delete('/delete/{id}', [PerfilController::class, 'destroy']);
     });
     
 });

@@ -18,7 +18,7 @@ class PerfilService
         return $user->load('paciente');
     }
 
-    public function update(Usuario $userAuth, array $user)
+    public function update(int $id, array $user)
     {
         $campoPaciente = [];
         $campoUsuario = [];
@@ -64,22 +64,24 @@ class PerfilService
 
 
         if(!empty($campoUsuario)){
-            $updateUsuario = $this->perfilRepository->updateUsuario($userAuth->id, $campoUsuario);
+            $updateUsuario = $this->perfilRepository->updateUsuario($id, $campoUsuario);
         }
 
         if(!empty($campoPaciente)){
-            $updatePaciente = $this->perfilRepository->updatePaciente($userAuth->id, $campoPaciente);
+            $updatePaciente = $this->perfilRepository->updatePaciente($id, $campoPaciente);
         }
 
         if(!$updateUsuario && !$updatePaciente){
             return null;
         }
 
-        return $userAuth->fresh()->load('paciente');
+        return Usuario::with('paciente')->find($id);
     }
 
-    public function destroy(Usuario $user)
+    public function destroy(int $id)
     {
-        
+        $result = $this->perfilRepository->destroy($id);
+
+        return $result;
     }
 }

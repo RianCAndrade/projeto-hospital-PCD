@@ -19,7 +19,7 @@ use Laravel\Sanctum\HasApiTokens;
 #[Hidden('senha')]
 class Usuario extends Authenticatable
 {
-    use HasApiTokens, HasFactory, Notifiable;
+    use HasApiTokens, HasFactory, Notifiable, SoftDeletes;
 
     protected $password = 'senha';
 

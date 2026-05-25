@@ -4,6 +4,7 @@ namespace App\Http\Repository;
 
 use App\Models\Paciente;
 use App\Models\Usuario;
+use Illuminate\Support\Facades\DB;
 
 class PerfilRespository
 {
@@ -22,9 +23,15 @@ class PerfilRespository
         return $this->paciente->where('usuario_id', $usuarioId)->update($paciente);
     }
 
-    public function delete()
+    public function destroy(int $id): bool
     {
+        return DB::transaction(function () use ($id){
+            $this->paciente->where('usuario_id', $id)->delete();
+            $deleted = $this->usuario->where('id', $id)->delete();
+            return $deleted > 0;
+        });
         
+        //  return $deletedUsuario > 0;
     }
 
 }
