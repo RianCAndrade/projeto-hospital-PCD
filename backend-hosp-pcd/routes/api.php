@@ -29,17 +29,20 @@ Route::middleware('auth:sanctum')->group(function (){
 
     // Rota de RH (Hospital)
     Route::prefix('rh')->group(function (){
-
+        Route::get('');
+        Route::post('');
     });
 
     // Rotas Recepcionista
     Route::prefix('recepcionista')->group(function (){
-
+        Route::get('');
+        Route::post('');
     });
 
     // Rota de atendimento
     Route::prefix('atendimento')->group(function (){
-
+        Route::get('');
+        Route::post('');
     });
 
     // Rotas agendamento
