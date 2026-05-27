@@ -253,9 +253,40 @@ export const mockApi: HospitalApi = {
   responsaveis: {
     async create(dto: CreateResponsavelDto) {
       await delay(250)
+
+      let usuarioId = dto.usuario_id
+
+      // Modo 2: cria o usuário responsável inline
+      if (!usuarioId) {
+        if (!dto.nome || !dto.email || !dto.senha) {
+          throw new ApiError(
+            422,
+            "Informe usuario_id ou os dados (nome, email, senha) do responsável.",
+          )
+        }
+        if (
+          usuariosState.some(
+            (u) => u.email.toLowerCase() === dto.email!.toLowerCase(),
+          )
+        ) {
+          throw new ApiError(422, "email ja cadastrado")
+        }
+        const novoUsuario: Usuario = {
+          id: gerarId("usuario"),
+          nome: dto.nome,
+          email: dto.email,
+          telefone: dto.telefone ?? null,
+          tipo_usuario: "responsavel",
+          created_at: nowISO(),
+          updated_at: nowISO(),
+        }
+        usuariosState = [...usuariosState, novoUsuario]
+        usuarioId = novoUsuario.id
+      }
+
       const novo: ResponsavelPaciente = {
         id: gerarId("responsavel"),
-        usuario_id: dto.usuario_id,
+        usuario_id: usuarioId,
         paciente_id: dto.paciente_id,
         parentesco: dto.parentesco,
         principal: dto.principal ?? false,

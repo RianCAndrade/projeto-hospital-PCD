@@ -117,6 +117,14 @@ export const usuariosMock: Usuario[] = [
     telefone: "(11) 94444-6666",
     tipo_usuario: "rh",
   },
+  // Paciente adulto que se autocadastrou pelo site
+  {
+    id: 13,
+    nome: "Paula Adulta",
+    email: "paula@email.com",
+    telefone: "(11) 94444-7777",
+    tipo_usuario: "paciente",
+  },
   // Médicos como usuários (linha em tbusuarios + tbmedicos)
   {
     id: 6,
@@ -254,6 +262,22 @@ export const pacientesMock: Paciente[] = [
         tipo_deficiencia: tiposDeficienciaMock[2],
       },
     ],
+  },
+  // Paciente adulto autocadastrado (vinculado ao Usuario id=13)
+  {
+    id: 5,
+    usuario_id: 13,
+    nome: "Paula Adulta",
+    data_nascimento: "1998-02-10",
+    cpf: null,
+    sexo: "feminino",
+    possui_autismo: false,
+    necessita_acessibilidade: false,
+    usa_cadeira_rodas: false,
+    necessita_acompanhante: false,
+    observacoes: null,
+    observacoes_comunicacao: null,
+    deficiencias: [],
   },
 ]
 
@@ -430,5 +454,11 @@ export const credenciaisDemo = [
     email: "rh@acolher.com",
     senha: "123456",
     nome: "Helena (RH)",
+  },
+  {
+    tipo_usuario: "paciente",
+    email: "paula@email.com",
+    senha: "123456",
+    nome: "Paula (Paciente)",
   },
 ] as const

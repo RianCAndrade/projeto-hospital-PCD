@@ -127,13 +127,34 @@ export interface UpdatePacienteDto extends Partial<CreatePacienteDto> {}
 
 /**
  * POST /api/responsaveis
- * Vincula um usuário (tipo_usuario = "responsavel") a um paciente.
+ *
+ * Vincula um responsável a um paciente. Aceita dois modos:
+ *
+ *   1. Vincular usuário JÁ existente:
+ *      { usuario_id, paciente_id, parentesco, principal }
+ *
+ *   2. Criar o usuário responsável inline + vincular (atalho usado
+ *      pelo painel do paciente quando o responsável ainda não tem
+ *      conta no Acolher):
+ *      { nome, email, telefone, senha, paciente_id, parentesco,
+ *        principal }
+ *      Backend cria o Usuario com `tipo_usuario = "responsavel"` e
+ *      em seguida grava o vínculo em `tbresponsavel_paciente`, numa
+ *      única transação.
  */
 export interface CreateResponsavelDto {
-  usuario_id: number
   paciente_id: number
   parentesco: string
   principal?: boolean
+
+  /** Modo 1: vincular usuário existente. */
+  usuario_id?: number
+
+  /** Modo 2: criar usuário responsável inline. */
+  nome?: string
+  email?: string
+  telefone?: string | null
+  senha?: string
 }
 
 // ──────────────────────────────────────────────────────────────────────────

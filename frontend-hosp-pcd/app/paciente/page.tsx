@@ -37,6 +37,9 @@ import {
   Calendar,
   Baby,
   AlertCircle,
+  HeartHandshake,
+  UserPlus,
+  Trash2,
 } from "lucide-react"
 import { toast } from "sonner"
 import { ApiError } from "@/lib/api"
@@ -53,9 +56,14 @@ export default function PacientePage() {
     agendamentos,
     medicos,
     especialidades,
+    pacientes,
+    responsaveis,
     pacientesDoUsuario,
     criarAgendamento,
     cancelarAgendamento,
+    vincularResponsavel,
+    removerResponsavel,
+    getUsuario,
   } = useHospital()
 
   const [novoOpen, setNovoOpen] = useState(false)
@@ -65,6 +73,15 @@ export default function PacientePage() {
   const [data, setData] = useState("")
   const [hora, setHora] = useState("")
   const [obs, setObs] = useState("")
+
+  // Vínculo de responsável (paciente adulto que precisa de cuidador)
+  const [respOpen, setRespOpen] = useState(false)
+  const [respNome, setRespNome] = useState("")
+  const [respEmail, setRespEmail] = useState("")
+  const [respTel, setRespTel] = useState("")
+  const [respSenha, setRespSenha] = useState("")
+  const [respParentesco, setRespParentesco] = useState("Mãe")
+  const [respPrincipal, setRespPrincipal] = useState(true)
 
   useEffect(() => {
     if (
@@ -115,6 +132,23 @@ export default function PacientePage() {
     [meusAgendamentos],
   )
 
+  /**
+   * Quando o usuário logado é o próprio paciente (`tipo_usuario === "paciente"`),
+   * achamos a linha em `tbpacientes` cuja `usuario_id` aponta para ele.
+   * É a partir desse paciente que listamos / vinculamos responsáveis.
+   */
+  const meuPacienteSelf = useMemo(() => {
+    if (!usuarioLogado || usuarioLogado.tipo_usuario !== "paciente") {
+      return null
+    }
+    return pacientes.find((p) => p.usuario_id === usuarioLogado.id) ?? null
+  }, [pacientes, usuarioLogado])
+
+  const meusResponsaveis = useMemo(() => {
+    if (!meuPacienteSelf) return []
+    return responsaveis.filter((r) => r.paciente_id === meuPacienteSelf.id)
+  }, [responsaveis, meuPacienteSelf])
+
   if (!usuarioLogado) return null
 
   const pacienteSelecionado = meusPacientes.find(
@@ -161,6 +195,48 @@ export default function PacientePage() {
         err instanceof ApiError
           ? err.message
           : "Não foi possível solicitar o agendamento."
+      toast.error(msg)
+    }
+  }
+
+  async function handleVincularResponsavel(e: React.FormEvent) {
+    e.preventDefault()
+    if (!meuPacienteSelf) {
+      toast.error("Seu cadastro de paciente ainda não foi criado.")
+      return
+    }
+    if (!respNome || !respEmail || !respSenha || !respParentesco) {
+      toast.error("Preencha nome, email, senha e parentesco.")
+      return
+    }
+    if (respSenha.length < 6) {
+      toast.error("A senha deve ter ao menos 6 caracteres.")
+      return
+    }
+    try {
+      await vincularResponsavel({
+        paciente_id: meuPacienteSelf.id,
+        parentesco: respParentesco,
+        principal: respPrincipal,
+        // Modo inline: backend cria Usuario (tipo=responsavel) + vínculo
+        nome: respNome,
+        email: respEmail,
+        telefone: respTel || null,
+        senha: respSenha,
+      })
+      toast.success("Responsável vinculado com sucesso.")
+      setRespNome("")
+      setRespEmail("")
+      setRespTel("")
+      setRespSenha("")
+      setRespParentesco("Mãe")
+      setRespPrincipal(true)
+      setRespOpen(false)
+    } catch (err) {
+      const msg =
+        err instanceof ApiError
+          ? err.message
+          : "Não foi possível vincular o responsável."
       toast.error(msg)
     }
   }
@@ -221,6 +297,111 @@ export default function PacientePage() {
               <CalendarPlus size={18} aria-hidden="true" />
               Agendar consulta
             </Button>
+          </section>
+        )}
+
+        {/* Responsável vinculado (só faz sentido pro próprio paciente) */}
+        {usuarioLogado.tipo_usuario === "paciente" && (
+          <section
+            aria-labelledby="meu-responsavel"
+            className="rounded-2xl border-2 border-accent/30 bg-accent/5 p-5"
+          >
+            <div className="flex items-start justify-between flex-wrap gap-3 mb-4">
+              <div className="flex items-start gap-3">
+                <span className="grid h-10 w-10 place-items-center rounded-xl bg-accent text-accent-foreground">
+                  <HeartHandshake size={20} aria-hidden="true" />
+                </span>
+                <div>
+                  <h2
+                    id="meu-responsavel"
+                    className="font-display text-xl font-bold"
+                  >
+                    Meu responsável
+                  </h2>
+                  <p className="text-sm text-muted-foreground mt-1 max-w-lg">
+                    Se você é adulto e se consulta sozinho, pode deixar
+                    esta seção vazia. Caso seja criança, adolescente, ou
+                    adulto que precise de um cuidador (mãe, pai,
+                    cuidador(a)), vincule aqui — ele(a) poderá agendar e
+                    acompanhar suas consultas.
+                  </p>
+                </div>
+              </div>
+              {meuPacienteSelf && (
+                <Button
+                  onClick={() => setRespOpen(true)}
+                  className="bg-accent hover:bg-accent/90 text-accent-foreground gap-2"
+                >
+                  <UserPlus size={16} aria-hidden="true" />
+                  Vincular responsável
+                </Button>
+              )}
+            </div>
+
+            {!meuPacienteSelf && (
+              <p className="text-sm text-muted-foreground rounded-xl border border-dashed border-border bg-card p-4">
+                Seu perfil de paciente ainda não foi criado. Conclua seu
+                cadastro de paciente para poder vincular um responsável.
+              </p>
+            )}
+
+            {meuPacienteSelf && meusResponsaveis.length === 0 && (
+              <p className="text-sm text-muted-foreground rounded-xl border border-dashed border-border bg-card p-4">
+                Nenhum responsável vinculado. Você está usando o sistema
+                de forma autônoma — tudo certo!
+              </p>
+            )}
+
+            {meusResponsaveis.length > 0 && (
+              <ul className="grid sm:grid-cols-2 gap-3">
+                {meusResponsaveis.map((r) => {
+                  const u = getUsuario(r.usuario_id)
+                  return (
+                    <li
+                      key={r.id}
+                      className="rounded-xl border-2 border-border bg-card p-4 flex items-start justify-between gap-3"
+                    >
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="font-display font-bold truncate">
+                            {u?.nome ?? `Responsável #${r.id}`}
+                          </p>
+                          {r.principal && (
+                            <span className="text-[10px] uppercase tracking-wider font-bold rounded-full bg-primary/10 text-primary px-2 py-0.5">
+                              Principal
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {r.parentesco}
+                        </p>
+                        {u?.email && (
+                          <p className="text-xs text-muted-foreground mt-1 truncate">
+                            {u.email}
+                          </p>
+                        )}
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={async () => {
+                          try {
+                            await removerResponsavel(r.id)
+                            toast.success("Responsável removido(a).")
+                          } catch {
+                            toast.error("Erro ao remover responsável.")
+                          }
+                        }}
+                        aria-label={`Remover responsável ${u?.nome ?? ""}`}
+                        className="text-destructive border-destructive/40 hover:bg-destructive/10 hover:text-destructive shrink-0"
+                      >
+                        <Trash2 size={14} aria-hidden="true" />
+                      </Button>
+                    </li>
+                  )
+                })}
+              </ul>
+            )}
           </section>
         )}
 
@@ -518,6 +699,140 @@ export default function PacientePage() {
               </Button>
               <Button type="submit" className="bg-primary hover:bg-primary/90">
                 Solicitar agendamento
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal: vincular responsável */}
+      <Dialog open={respOpen} onOpenChange={setRespOpen}>
+        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="font-display text-2xl">
+              Vincular responsável
+            </DialogTitle>
+            <DialogDescription>
+              Criamos uma conta para o responsável (mãe, pai ou cuidador(a))
+              e a vinculamos ao seu cadastro como paciente.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleVincularResponsavel} className="space-y-4 mt-2">
+            <div className="space-y-2">
+              <Label htmlFor="r-nome" className="text-sm font-semibold">
+                Nome do responsável
+              </Label>
+              <Input
+                id="r-nome"
+                value={respNome}
+                onChange={(e) => setRespNome(e.target.value)}
+                placeholder="Ex.: Marina Oliveira"
+                className="h-11"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label htmlFor="r-email" className="text-sm font-semibold">
+                  Email
+                </Label>
+                <Input
+                  id="r-email"
+                  type="email"
+                  value={respEmail}
+                  onChange={(e) => setRespEmail(e.target.value)}
+                  className="h-11"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="r-tel" className="text-sm font-semibold">
+                  Telefone
+                </Label>
+                <Input
+                  id="r-tel"
+                  value={respTel}
+                  onChange={(e) => setRespTel(e.target.value)}
+                  className="h-11"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label htmlFor="r-senha" className="text-sm font-semibold">
+                  Senha provisória
+                </Label>
+                <Input
+                  id="r-senha"
+                  type="password"
+                  value={respSenha}
+                  onChange={(e) => setRespSenha(e.target.value)}
+                  placeholder="Mínimo 6 caracteres"
+                  className="h-11"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="r-parentesco" className="text-sm font-semibold">
+                  Parentesco
+                </Label>
+                <Select
+                  value={respParentesco}
+                  onValueChange={setRespParentesco}
+                >
+                  <SelectTrigger id="r-parentesco" className="h-11">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Mãe">Mãe</SelectItem>
+                    <SelectItem value="Pai">Pai</SelectItem>
+                    <SelectItem value="Avó/Avô">Avó/Avô</SelectItem>
+                    <SelectItem value="Tio/Tia">Tio/Tia</SelectItem>
+                    <SelectItem value="Irmão/Irmã">Irmão/Irmã</SelectItem>
+                    <SelectItem value="Cuidador(a)">Cuidador(a)</SelectItem>
+                    <SelectItem value="Tutor(a) legal">
+                      Tutor(a) legal
+                    </SelectItem>
+                    <SelectItem value="Outro">Outro</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <label
+              htmlFor="r-principal"
+              className="flex items-start gap-3 cursor-pointer rounded-xl border-2 border-border bg-card p-3 has-[input:checked]:border-primary has-[input:checked]:bg-primary/5 transition-colors"
+            >
+              <input
+                id="r-principal"
+                type="checkbox"
+                checked={respPrincipal}
+                onChange={(e) => setRespPrincipal(e.target.checked)}
+                className="mt-1 h-5 w-5 rounded border-2 border-border accent-primary"
+              />
+              <span className="text-sm leading-relaxed">
+                <span className="font-display font-bold block">
+                  Responsável principal
+                </span>
+                <span className="text-muted-foreground">
+                  É a pessoa de contato preferencial do hospital.
+                </span>
+              </span>
+            </label>
+
+            <DialogFooter className="gap-2 sm:gap-0">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setRespOpen(false)}
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="submit"
+                className="bg-accent hover:bg-accent/90 text-accent-foreground"
+              >
+                Vincular responsável
               </Button>
             </DialogFooter>
           </form>

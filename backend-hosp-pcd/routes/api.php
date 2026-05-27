@@ -6,6 +6,7 @@ use App\Http\Controllers\LoginController;
 use App\Http\Controllers\LogoutController;
 use App\Http\Controllers\PerfilController;
 use App\Http\Controllers\RegisterController;
+use App\Http\Controllers\RhController;
 use Illuminate\Support\Facades\Route;
 
 
@@ -24,14 +25,28 @@ Route::middleware('auth:sanctum')->group(function (){
 
     // Rota de admin
     Route::prefix('admin')->group(function (){
-
+        Route::get('');
+        Route::post('');
     });
 
     // Rota de RH (Hospital)
     Route::prefix('rh')->group(function (){
-        Route::get('');
-        Route::post('');
+        Route::get('/medico', [RhController::class, 'index']);
+        Route::get('/medico/{id}', [RhController::class, 'show']);
+        Route::post('/medico/store', [RhController::class, 'store']);
+        Route::put('medico/update/{id}', [RhController::class, 'update']);
+        Route::delete('/medico/delete/{id} ', [RhController::class, 'destroy']);
     });
+
+    // Proprio medico pode se cadastrar
+    Route::get('/medico/cadastro', [RhController::class, 'cadastro']);
+    Route::post('/medico/cadastro', [RhController::class, 'cadastro']);
+    Route::update('/medico/cadastro', [RhController::class, 'cadastro']);
+    Route::delete('/medico/cadastro', [RhController::class, 'cadastro']);
+
+    // Rota responsaveis
+    Route::post('/responsaveis', );
+    Route::delete('/responsaveis', );
 
     // Rotas Recepcionista
     Route::prefix('recepcionista')->group(function (){

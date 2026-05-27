@@ -34,6 +34,7 @@ import type {
   CreateAgendamentoDto,
   CreateMedicoDto,
   CreatePacienteDto,
+  CreateResponsavelDto,
   RegisterDto,
   RescheduleAgendamentoDto,
 } from "./api/types"
@@ -79,6 +80,11 @@ interface HospitalContextValue {
   ) => Promise<void>
 
   criarPaciente: (dto: CreatePacienteDto) => Promise<Paciente>
+
+  vincularResponsavel: (
+    dto: CreateResponsavelDto,
+  ) => Promise<ResponsavelPaciente>
+  removerResponsavel: (id: number) => Promise<void>
 
   criarMedico: (dto: CreateMedicoDto) => Promise<Medico>
   removerMedico: (id: number) => Promise<void>
@@ -240,6 +246,37 @@ export function HospitalProvider({ children }: { children: React.ReactNode }) {
     return novo
   }, [])
 
+  const vincularResponsavel = useCallback(
+    async (dto: CreateResponsavelDto) => {
+      const novo = await api.responsaveis.create(dto)
+      setResponsaveis((prev) => [...prev, novo])
+      // Quando o backend cria o Usuario inline, refletimos no estado
+      // local para a UI mostrar o nome do responsável imediatamente.
+      if (!dto.usuario_id && novo.usuario_id) {
+        const jaExiste = usuarios.some((u) => u.id === novo.usuario_id)
+        if (!jaExiste && dto.nome && dto.email) {
+          setUsuarios((prev) => [
+            ...prev,
+            {
+              id: novo.usuario_id,
+              nome: dto.nome!,
+              email: dto.email!,
+              telefone: dto.telefone ?? null,
+              tipo_usuario: "responsavel",
+            },
+          ])
+        }
+      }
+      return novo
+    },
+    [usuarios],
+  )
+
+  const removerResponsavel = useCallback(async (id: number) => {
+    await api.responsaveis.delete(id)
+    setResponsaveis((prev) => prev.filter((r) => r.id !== id))
+  }, [])
+
   const criarMedico = useCallback(async (dto: CreateMedicoDto) => {
     const novo = await api.medicos.create(dto)
     setMedicos((prev) => [...prev, novo])
@@ -282,6 +319,8 @@ export function HospitalProvider({ children }: { children: React.ReactNode }) {
       cancelarAgendamento,
       remarcarAgendamento,
       criarPaciente,
+      vincularResponsavel,
+      removerResponsavel,
       criarMedico,
       removerMedico,
       removerUsuario,
@@ -311,6 +350,8 @@ export function HospitalProvider({ children }: { children: React.ReactNode }) {
       cancelarAgendamento,
       remarcarAgendamento,
       criarPaciente,
+      vincularResponsavel,
+      removerResponsavel,
       criarMedico,
       removerMedico,
       removerUsuario,

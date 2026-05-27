@@ -8,5 +8,6 @@ enum TiposUsuario: string
     case Recepcionista = 'recepcionista';
     case Medico = 'medico';
     case Responsavel = 'responsavel';
+    case Rh = 'rh';
     case Paciente = 'paciente';
 }
