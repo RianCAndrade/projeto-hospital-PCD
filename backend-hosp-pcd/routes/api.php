@@ -4,7 +4,9 @@
 
 use App\Http\Controllers\LoginController;
 use App\Http\Controllers\LogoutController;
+use App\Http\Controllers\MedicoController;
 use App\Http\Controllers\PerfilController;
+use App\Http\Controllers\RecepcionistaController;
 use App\Http\Controllers\RegisterController;
 use App\Http\Controllers\RhController;
 use Illuminate\Support\Facades\Route;
@@ -30,19 +32,26 @@ Route::middleware('auth:sanctum')->group(function (){
     });
 
     // Rota de RH (Hospital)
-    Route::prefix('rh')->group(function (){
-        Route::get('/medico', [RhController::class, 'index']);
-        Route::get('/medico/{id}', [RhController::class, 'show']);
-        Route::post('/medico/store', [RhController::class, 'store']);
-        Route::put('medico/update/{id}', [RhController::class, 'update']);
-        Route::delete('/medico/delete/{id} ', [RhController::class, 'destroy']);
+    Route::prefix('rh')->group(function () {
+        // Médicos
+        Route::get('/medico', [RhController::class, 'indexMedico']);
+        Route::post('/medico', [RhController::class, 'storeMedico']);
+        Route::get('/medico/{id}', [RhController::class, 'showMedico']);
+        Route::put('/medico/{id}', [RhController::class, 'updateMedico']);
+        Route::delete('/medico/{id}', [RhController::class, 'destroyMedico']);
+        // Recepcionistas
+        Route::get('/recepcionista', [RhController::class, 'indexRecepcionista']);
+        Route::post('/recepcionista', [RhController::class, 'storeRecepcionista']);
+        Route::get('/recepcionista/{id}', [RhController::class, 'showRecepcionista']);
+        Route::put('/recepcionista/{id}', [RhController::class, 'updateRecepcionista']);
+        Route::delete('/recepcionista/{id}', [RhController::class, 'destroyRecepcionista']);
     });
 
     // Proprio medico pode se cadastrar
-    Route::get('/medico/cadastro', [RhController::class, 'cadastro']);
-    Route::post('/medico/cadastro', [RhController::class, 'cadastro']);
-    Route::update('/medico/cadastro', [RhController::class, 'cadastro']);
-    Route::delete('/medico/cadastro', [RhController::class, 'cadastro']);
+    Route::get('/medico', [MedicoController::class, 'index']);
+    Route::post('/medico/store', [MedicoController::class, 'store']);
+    Route::update('/medico/update', [MedicoController::class, 'update']);
+    Route::delete('/medico/delete', [MedicoController::class, 'destroy']);
 
     // Rota responsaveis
     Route::post('/responsaveis', );
@@ -50,8 +59,9 @@ Route::middleware('auth:sanctum')->group(function (){
 
     // Rotas Recepcionista
     Route::prefix('recepcionista')->group(function (){
-        Route::get('');
-        Route::post('');
+        Route::get('', [RecepcionistaController::class, '']);
+        Route::get('', [RecepcionistaController::class, '']);
+        Route::get('', [RecepcionistaController::class, '']);
     });
 
     // Rota de atendimento

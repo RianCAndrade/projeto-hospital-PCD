@@ -14,17 +14,17 @@ class RhRepository
         private Medico $medico
     ){}
 
-    public function index()
+    public function indexMedico()
     {
         return $this->medico->get();
     }
 
-    public function show(int $id)
+    public function showMedico(int $id)
     {
         return $this->medico->where('id', $id)->first();
     }
 
-    public function store(array $dados)
+    public function storeMedico(array $dados)
     {
         // $camposUsuario = [$dados['nome'], $dados['cpf'], $dados['email'], $dados['senha'], $dados['telefone']];
         // $camposMedico = [$dados['crm'], $dados['descricao']];
@@ -49,6 +49,70 @@ class RhRepository
 
             return $medico;
         });
-        
+    }
+
+    public function updateMedico(int $id, array $dados)
+    {
+        return DB::transaction(function () use ($id, $dados){
+            $usuarioMedico = $this->usuario->where('id', $id)->update([
+                'nome' => $dados['nome'],
+                'cpf' => $dados['cpf'],
+                'email' => $dados['email'],
+                'senha' => $dados['senha'],
+                'telefone' => $dados['telefone'],
+                // 'tipo_usuario' => TiposUsuario::Medico,
+            ]);
+
+            $medico = $this->medico->where('usuario_id', $usuarioMedico)->update([
+                // 'usuario_id' => $usuarioMedico,
+                'crm' => $dados['crm'],
+                'descricao' => $dados['descricao'],
+            ]);
+
+            return $medico;
+        });
+    }
+
+    public function destroyMedico(int $id)
+    {
+        return $this->medico->where('id', $id)->delete();
+    }
+
+    public function indexRecepcionista()
+    {
+        return $this->medico->get();
+    }
+
+    public function showRecepcionista(int $id)
+    {
+        return $this->medico->where('id', $id)->first();
+    }
+
+    public function storeRecepcionista(array $dados)
+    {
+        return $this->usuario->create([
+            'nome' => $dados['nome'],
+            'cpf' => $dados['cpf'],
+            'email' => $dados['email'],
+            'senha' => $dados['senha'],
+            'telefone' => $dados['telefone'],
+            'tipo_usuario' => TiposUsuario::Recepcionista,
+        ]);
+    }
+
+    public function updateRecepcionista(int $id, array $dados)
+    {
+        return $this->usuario->where('id', $id)->update([
+            'nome' => $dados['nome'],
+            'cpf' => $dados['cpf'],
+            'email' => $dados['email'],
+            'senha' => $dados['senha'],
+            'telefone' => $dados['telefone'],
+        ]);
+    }
+
+    public function destroyRecepcionista(int $id)
+    {
+        return $this->usuario->where('id', $id)->delete();
     }
 }
