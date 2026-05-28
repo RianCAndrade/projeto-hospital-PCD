@@ -19,10 +19,10 @@ Route::middleware('auth:sanctum')->group(function (){
     Route::post('/logout', [LogoutController::class, 'logout']);
 
     // Rotas usuario paciente
-    Route::prefix('me')->group(function (){
+    Route::prefix('perfil')->group(function (){
         Route::get('/', [PerfilController::class, 'index']);
-        Route::put('/update/{id}', [PerfilController::class, 'update']);
-        Route::delete('/delete/{id}', [PerfilController::class, 'destroy']);
+        Route::put('/perfil/{id}', [PerfilController::class, 'update']);
+        Route::delete('/perfil/{id}', [PerfilController::class, 'destroy']);
     });
 
     // Rota de admin
@@ -60,9 +60,11 @@ Route::middleware('auth:sanctum')->group(function (){
 
     // Rotas Recepcionista
     Route::prefix('recepcionista')->group(function (){
-        Route::get('', [RecepcionistaController::class, '']);
-        Route::get('', [RecepcionistaController::class, '']);
-        Route::get('', [RecepcionistaController::class, '']);
+        Route::get('/paciente', [RecepcionistaController::class, 'index']);
+        Route::get('/paciente/{id}', [RecepcionistaController::class, 'show']);
+        Route::post('/paciente', [RecepcionistaController::class, 'store']);
+        Route::put('/paciente/{id}', [RecepcionistaController::class, 'update']);
+        Route::delete('/paciente/{id}', [RecepcionistaController::class, 'destroy']);
     });
 
     // Rota de atendimento
