@@ -114,6 +114,12 @@ export const mockApi: HospitalApi = {
      */
     async register(dto: RegisterDto) {
       await delay(400)
+
+      // Validações espelhando o RegisterController
+      if (!dto.cpf) throw new ApiError(422, "O campo cpf é obrigatório.")
+      if (!dto.data_nascimento) throw new ApiError(422, "O campo data_nascimento é obrigatório.")
+      if (!dto.sexo) throw new ApiError(422, "O campo sexo é obrigatório.")
+
       if (
         usuariosState.some(
           (u) => u.email.toLowerCase() === dto.email.toLowerCase(),
@@ -121,16 +127,43 @@ export const mockApi: HospitalApi = {
       ) {
         throw new ApiError(422, "email ja cadastrado")
       }
+      if (
+        usuariosState.some((u) => u.cpf === dto.cpf)
+      ) {
+        throw new ApiError(422, "cpf ja cadastrado")
+      }
+
       const novo: Usuario = {
         id: gerarId("usuario"),
         nome: dto.nome,
+        cpf: dto.cpf,
         email: dto.email,
-        telefone: dto.telefone,
+        telefone: dto.telefone ?? null,
         tipo_usuario: dto.tipo_usuario,
         created_at: nowISO(),
         updated_at: nowISO(),
       }
       usuariosState = [...usuariosState, novo]
+
+      const novoPaciente: Paciente = {
+        id: gerarId("paciente"),
+        usuario_id: novo.id,
+        nome: dto.nome,
+        data_nascimento: dto.data_nascimento,
+        cpf: dto.cpf,
+        sexo: dto.sexo,
+        possui_autismo: dto.possui_autismo,
+        necessita_acessibilidade: dto.necessita_acessibilidade,
+        usa_cadeira_rodas: dto.usa_cadeira_rodas,
+        necessita_acompanhante: dto.necessita_acompanhante,
+        observacoes: dto.observacoes ?? null,
+        observacoes_comunicacao: dto.observacoes_comunicacao ?? null,
+        created_at: nowISO(),
+        updated_at: nowISO(),
+        deficiencias: [],
+      }
+      pacientesState = [...pacientesState, novoPaciente]
+
       return { usuario: novo } satisfies AuthResponse
     },
 

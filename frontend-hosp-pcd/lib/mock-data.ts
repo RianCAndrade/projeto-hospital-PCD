@@ -75,6 +75,7 @@ export const usuariosMock: Usuario[] = [
   {
     id: 1,
     nome: "Marina Oliveira",
+    cpf: "123.456.789-01",
     email: "marina@email.com",
     telefone: "(11) 98888-1111",
     tipo_usuario: "responsavel",
@@ -82,6 +83,7 @@ export const usuariosMock: Usuario[] = [
   {
     id: 2,
     nome: "Ana Paula Ferreira",
+    cpf: "234.567.890-12",
     email: "ana@email.com",
     telefone: "(11) 97777-2222",
     tipo_usuario: "responsavel",
@@ -89,6 +91,7 @@ export const usuariosMock: Usuario[] = [
   {
     id: 3,
     nome: "Patrícia Mendes",
+    cpf: "345.678.901-23",
     email: "patricia@email.com",
     telefone: "(11) 96666-3333",
     tipo_usuario: "responsavel",
@@ -97,6 +100,7 @@ export const usuariosMock: Usuario[] = [
   {
     id: 4,
     nome: "Carla Recepção",
+    cpf: "456.789.012-34",
     email: "recepcao@acolher.com",
     telefone: "(11) 95555-4444",
     tipo_usuario: "recepcionista",
@@ -105,6 +109,7 @@ export const usuariosMock: Usuario[] = [
   {
     id: 5,
     nome: "Roberto Diretor",
+    cpf: "567.890.123-45",
     email: "admin@acolher.com",
     telefone: "(11) 94444-5555",
     tipo_usuario: "admin",
@@ -113,6 +118,7 @@ export const usuariosMock: Usuario[] = [
   {
     id: 12,
     nome: "Helena RH",
+    cpf: "678.901.234-56",
     email: "rh@acolher.com",
     telefone: "(11) 94444-6666",
     tipo_usuario: "rh",
@@ -121,6 +127,7 @@ export const usuariosMock: Usuario[] = [
   {
     id: 13,
     nome: "Paula Adulta",
+    cpf: "789.012.345-67",
     email: "paula@email.com",
     telefone: "(11) 94444-7777",
     tipo_usuario: "paciente",
@@ -129,6 +136,7 @@ export const usuariosMock: Usuario[] = [
   {
     id: 6,
     nome: "Dra. Beatriz Almeida",
+    cpf: "890.123.456-78",
     email: "beatriz.almeida@acolher.com",
     telefone: "(11) 93333-6666",
     tipo_usuario: "medico",
@@ -136,6 +144,7 @@ export const usuariosMock: Usuario[] = [
   {
     id: 7,
     nome: "Dr. Rafael Souza",
+    cpf: "901.234.567-89",
     email: "rafael.souza@acolher.com",
     telefone: "(11) 93333-7777",
     tipo_usuario: "medico",
@@ -143,6 +152,7 @@ export const usuariosMock: Usuario[] = [
   {
     id: 8,
     nome: "Dra. Camila Reis",
+    cpf: "012.345.678-90",
     email: "camila.reis@acolher.com",
     telefone: "(11) 93333-8888",
     tipo_usuario: "medico",
@@ -150,6 +160,7 @@ export const usuariosMock: Usuario[] = [
   {
     id: 9,
     nome: "Dr. Luiz Henrique",
+    cpf: "111.222.333-44",
     email: "luiz.henrique@acolher.com",
     telefone: "(11) 93333-9999",
     tipo_usuario: "medico",
@@ -157,6 +168,7 @@ export const usuariosMock: Usuario[] = [
   {
     id: 10,
     nome: "Dra. Juliana Pires",
+    cpf: "222.333.444-55",
     email: "juliana.pires@acolher.com",
     telefone: "(11) 93334-0000",
     tipo_usuario: "medico",
@@ -164,6 +176,7 @@ export const usuariosMock: Usuario[] = [
   {
     id: 11,
     nome: "Dr. Marcos Vinícius",
+    cpf: "333.444.555-66",
     email: "marcos.vinicius@acolher.com",
     telefone: "(11) 93334-1111",
     tipo_usuario: "medico",

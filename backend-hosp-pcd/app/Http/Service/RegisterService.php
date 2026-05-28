@@ -28,21 +28,21 @@ class RegisterService
         if (!$usuario){
             return false;
         }
-            
-            $dadosPaciente = [
-                'usuario_id' => $usuario->id,
-                'nome' => $dados['nome'],
-                'cpf' => $usuario->cpf,
-                'data_nascimento' => $dados['data_nascimento'],
-                'sexo' => $dados['sexo'],
-                'possui_autismo' => $dados['possui_autismo'],
-                'necessita_acessibilidade' => $dados['necessita_acessibilidade'],
-                'usa_cadeira_rodas' => $dados['usa_cadeira_rodas'],
-                'necessita_acompanhante' => $dados['necessita_acompanhante'],
-                'observacoes' => $dados['observacoes'],
-                'observacoes_comunicacao' => $dados['observacoes_comunicacao'],
-            ];
-            $result = $this->registerRepository->createPaciente($dadosPaciente);
-            return $result;
+
+        $dadosPaciente = [
+            'usuario_id' => $usuario->id,
+            'nome' => $dados['nome'],
+            'cpf' => $usuario->cpf,
+            'data_nascimento' => $dados['data_nascimento'],
+            'sexo' => $dados['sexo'],
+            'possui_autismo' => $dados['possui_autismo'],
+            'necessita_acessibilidade' => $dados['necessita_acessibilidade'],
+            'usa_cadeira_rodas' => $dados['usa_cadeira_rodas'],
+            'necessita_acompanhante' => $dados['necessita_acompanhante'],
+            'observacoes' => $dados['observacoes'],
+            'observacoes_comunicacao' => $dados['observacoes_comunicacao'],
+        ];
+        $result = $this->registerRepository->createPaciente($dadosPaciente);
+        return $result;
     }
 }

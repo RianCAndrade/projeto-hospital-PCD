@@ -23,7 +23,6 @@ class RegisterController
                 'email' =>      'required|string|email|unique:tbusuarios',
                 'senha' =>      'required|string',
                 'telefone' =>   'nullable|string',
-                // 'tipo_usuario' => Rule::in(TiposUsuario::Paciente),
                 'data_nascimento' =>            'required|date',
                 'sexo' =>                       'required|string',
                 'possui_autismo' =>             'required|boolean',

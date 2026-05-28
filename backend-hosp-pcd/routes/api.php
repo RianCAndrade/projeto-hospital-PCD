@@ -49,12 +49,13 @@ Route::middleware('auth:sanctum')->group(function (){
 
     // Proprio medico pode se cadastrar
     Route::get('/medico', [MedicoController::class, 'index']);
-    Route::post('/medico/store', [MedicoController::class, 'store']);
-    Route::update('/medico/update', [MedicoController::class, 'update']);
-    Route::delete('/medico/delete', [MedicoController::class, 'destroy']);
+    Route::get('/medico/{id}', [MedicoController::class, 'show']);
+    Route::post('/medico', [MedicoController::class, 'store']);
+    Route::put('/medico/{id}', [MedicoController::class, 'update']);
+    Route::delete('/medico/{id}', [MedicoController::class, 'destroy']);
 
     // Rota responsaveis
-    Route::post('/responsaveis', );
+    Route::post('/responsaveis', []);
     Route::delete('/responsaveis', );
 
     // Rotas Recepcionista

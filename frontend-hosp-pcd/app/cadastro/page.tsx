@@ -7,35 +7,36 @@ import { useHospital } from "@/lib/store"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { Textarea } from "@/components/ui/textarea"
 import { Heart, ArrowLeft, UserPlus, ShieldCheck, HeartHandshake } from "lucide-react"
 import { toast } from "sonner"
 import { ApiError } from "@/lib/api"
 
-/**
- * Cadastro público.
- *
- * Regra de negócio:
- *   - Quem se autocadastra no site é SEMPRE `tipo_usuario = "paciente"`.
- *   - Marca `precisa_responsavel` se for criança/adolescente PCD que
- *     precisa de um responsável vinculado (responsável será cadastrado
- *     em etapa posterior, no painel do paciente).
- *
- * Funcionário (médico, recepcionista) NUNCA é cadastrado por aqui —
- * isso é feito pelo painel do RH (ou do Admin Geral).
- *
- * Payload enviado para `POST /api/register`:
- *   { nome, email, telefone, senha, tipo_usuario: "paciente",
- *     precisa_responsavel }
- */
 export default function CadastroPage() {
   const router = useRouter()
   const { cadastrar } = useHospital()
 
   const [nome, setNome] = useState("")
+  const [cpf, setCpf] = useState("")
+  const [dataNascimento, setDataNascimento] = useState("")
+  const [sexo, setSexo] = useState("")
   const [email, setEmail] = useState("")
   const [telefone, setTelefone] = useState("")
   const [senha, setSenha] = useState("")
   const [confirmarSenha, setConfirmarSenha] = useState("")
+  const [possuiAutismo, setPossuiAutismo] = useState(false)
+  const [necessitaAcessibilidade, setNecessitaAcessibilidade] = useState(false)
+  const [usaCadeiraRodas, setUsaCadeiraRodas] = useState(false)
+  const [necessitaAcompanhante, setNecessitaAcompanhante] = useState(false)
+  const [observacoes, setObservacoes] = useState("")
+  const [observacoesComunicacao, setObservacoesComunicacao] = useState("")
   const [precisaResponsavel, setPrecisaResponsavel] = useState(false)
   const [aceiteTermos, setAceiteTermos] = useState(false)
   const [carregando, setCarregando] = useState(false)
@@ -59,9 +60,18 @@ export default function CadastroPage() {
     try {
       await cadastrar({
         nome,
+        cpf,
         email,
-        telefone,
+        telefone: telefone || undefined,
         senha,
+        data_nascimento: dataNascimento,
+        sexo,
+        possui_autismo: possuiAutismo,
+        necessita_acessibilidade: necessitaAcessibilidade,
+        usa_cadeira_rodas: usaCadeiraRodas,
+        necessita_acompanhante: necessitaAcompanhante,
+        observacoes: observacoes || undefined,
+        observacoes_comunicacao: observacoesComunicacao || undefined,
         tipo_usuario: "paciente",
         precisa_responsavel: precisaResponsavel,
       })
@@ -195,9 +205,6 @@ export default function CadastroPage() {
                 >
                   Seus dados
                 </h2>
-                <p className="text-sm text-muted-foreground">
-                  {/* Esses campos vão para <code>POST /api/register</code>. */}
-                </p>
               </div>
             </div>
 
@@ -215,6 +222,52 @@ export default function CadastroPage() {
                   onChange={(e) => setNome(e.target.value)}
                   className="h-12 text-base"
                 />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="cpf" className="text-sm font-semibold">
+                  CPF
+                </Label>
+                <Input
+                  id="cpf"
+                  required
+                  autoComplete="off"
+                  placeholder="123.456.789-00"
+                  value={cpf}
+                  onChange={(e) => setCpf(e.target.value)}
+                  className="h-12 text-base"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="data-nascimento" className="text-sm font-semibold">
+                  Data de nascimento
+                </Label>
+                <Input
+                  id="data-nascimento"
+                  type="date"
+                  required
+                  autoComplete="bday"
+                  value={dataNascimento}
+                  onChange={(e) => setDataNascimento(e.target.value)}
+                  className="h-12 text-base"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="sexo" className="text-sm font-semibold">
+                  Sexo
+                </Label>
+                <Select value={sexo} onValueChange={setSexo} required>
+                  <SelectTrigger id="sexo" className="h-12 text-base">
+                    <SelectValue placeholder="Selecione" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="feminino">Feminino</SelectItem>
+                    <SelectItem value="masculino">Masculino</SelectItem>
+                    <SelectItem value="nao_informado">Prefiro não informar</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="space-y-2">
@@ -240,7 +293,6 @@ export default function CadastroPage() {
                 <Input
                   id="telefone"
                   type="tel"
-                  required
                   autoComplete="tel"
                   placeholder="(11) 99999-9999"
                   value={telefone}
@@ -281,6 +333,103 @@ export default function CadastroPage() {
                   value={confirmarSenha}
                   onChange={(e) => setConfirmarSenha(e.target.value)}
                   className="h-12 text-base"
+                />
+              </div>
+            </div>
+          </section>
+
+          {/* Informações de acessibilidade */}
+          <section
+            aria-labelledby="acessibilidade"
+            className="rounded-2xl border-2 border-border bg-card p-6 sm:p-8"
+          >
+            <div className="flex items-center gap-3 mb-6">
+              <span className="grid h-10 w-10 place-items-center rounded-xl bg-accent/10 text-accent">
+                <HeartHandshake size={20} aria-hidden="true" />
+              </span>
+              <div>
+                <h2
+                  id="acessibilidade"
+                  className="font-display text-xl font-bold"
+                >
+                  Informações de acessibilidade
+                </h2>
+                <p className="text-sm text-muted-foreground">
+                  Opcionais — ajudam a equipe a preparar o melhor atendimento
+                  para você.
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              {[
+                {
+                  id: "autismo",
+                  label: "Possuo Transtorno do Espectro Autista (TEA)",
+                  checked: possuiAutismo,
+                  set: setPossuiAutismo,
+                },
+                {
+                  id: "acessibilidade",
+                  label: "Necessito de acessibilidade no ambiente",
+                  checked: necessitaAcessibilidade,
+                  set: setNecessitaAcessibilidade,
+                },
+                {
+                  id: "cadeira-rodas",
+                  label: "Uso cadeira de rodas",
+                  checked: usaCadeiraRodas,
+                  set: setUsaCadeiraRodas,
+                },
+                {
+                  id: "acompanhante",
+                  label: "Preciso de acompanhante durante o atendimento",
+                  checked: necessitaAcompanhante,
+                  set: setNecessitaAcompanhante,
+                },
+              ].map((item) => (
+                <label
+                  key={item.id}
+                  htmlFor={item.id}
+                  className="flex items-start gap-3 cursor-pointer rounded-xl border border-border bg-card/50 p-4 has-[input:checked]:border-accent has-[input:checked]:bg-accent/5 transition-colors"
+                >
+                  <input
+                    id={item.id}
+                    type="checkbox"
+                    checked={item.checked}
+                    onChange={(e) => item.set(e.target.checked)}
+                    className="mt-1 h-5 w-5 rounded border-2 border-border accent-accent"
+                  />
+                  <span className="text-sm leading-relaxed font-medium">
+                    {item.label}
+                  </span>
+                </label>
+              ))}
+            </div>
+
+            <div className="grid sm:grid-cols-2 gap-5 mt-6">
+              <div className="space-y-2">
+                <Label htmlFor="observacoes" className="text-sm font-semibold">
+                  Observações gerais
+                </Label>
+                <Textarea
+                  id="observacoes"
+                  placeholder="Alguma informação relevante?"
+                  value={observacoes}
+                  onChange={(e) => setObservacoes(e.target.value)}
+                  className="min-h-[100px]"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="obs-comunicacao" className="text-sm font-semibold">
+                  Observações de comunicação
+                </Label>
+                <Textarea
+                  id="obs-comunicacao"
+                  placeholder="Forma de comunicação, preferências, etc."
+                  value={observacoesComunicacao}
+                  onChange={(e) => setObservacoesComunicacao(e.target.value)}
+                  className="min-h-[100px]"
                 />
               </div>
             </div>

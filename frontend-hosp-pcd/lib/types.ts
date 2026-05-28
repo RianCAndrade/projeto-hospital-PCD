@@ -68,6 +68,7 @@ export type NomeTipoDeficiencia = string
 export interface Usuario {
   id: number
   nome: string
+  cpf: string | null
   email: string
   telefone: string | null
   tipo_usuario: TipoUsuario

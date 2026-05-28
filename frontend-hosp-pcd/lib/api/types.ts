@@ -58,9 +58,18 @@ export interface BackendResponse<T> {
  */
 export interface RegisterDto {
   nome: string
+  cpf: string
   email: string
-  telefone: string
+  telefone?: string
   senha: string
+  data_nascimento: string
+  sexo: string
+  possui_autismo: boolean
+  necessita_acessibilidade: boolean
+  usa_cadeira_rodas: boolean
+  necessita_acompanhante: boolean
+  observacoes?: string
+  observacoes_comunicacao?: string
   tipo_usuario: TipoUsuario
   /**
    * Usado apenas no autocadastro público do paciente.
