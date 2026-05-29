@@ -8,7 +8,7 @@ class MedicoService
 {
     public function __construct(
         private MedicoRepository $medicoRepository
-    ){}
+    ) {}
 
     public function index()
     {
@@ -34,5 +34,4 @@ class MedicoService
     {
         return $this->medicoRepository->destroy($id);
     }
-
 }

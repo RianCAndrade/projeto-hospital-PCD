@@ -10,12 +10,12 @@ class RegisterRepository
     public function __construct(
         private Usuario $usuario,
         private Paciente $paciente
-    ){}
+    ) {}
 
     public function createUsuario(array $dadosUsuario)
     {
 
-        if($this->usuario->where('email', $dadosUsuario['email'])->exists()){
+        if ($this->usuario->where('email', $dadosUsuario['email'])->exists()) {
             return false;
         }
 
@@ -30,6 +30,4 @@ class RegisterRepository
 
         return $result;
     }
-
-    
 }

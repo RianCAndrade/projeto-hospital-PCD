@@ -9,7 +9,7 @@ class RecepcionistaRepository
 {
     public function __construct(
         private Usuario $usuario
-    ){}
+    ) {}
 
     public function store(array $dados)
     {
@@ -29,7 +29,7 @@ class RecepcionistaRepository
     {
         $usuario = $this->usuario->find($id);
 
-        if(!$usuario){
+        if (! $usuario) {
             return false;
         }
 
@@ -48,7 +48,7 @@ class RecepcionistaRepository
     {
         $usuario = $this->usuario->find($id);
 
-        if(!$usuario){
+        if (! $usuario) {
             return false;
         }
 

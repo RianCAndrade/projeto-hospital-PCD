@@ -11,7 +11,7 @@ class PerfilRespository
     public function __construct(
         private Usuario $usuario,
         private Paciente $paciente
-    ){}
+    ) {}
 
     public function updateUsuario(int $usuarioId, array $user)
     {
@@ -25,13 +25,13 @@ class PerfilRespository
 
     public function destroy(int $id): bool
     {
-        return DB::transaction(function () use ($id){
+        return DB::transaction(function () use ($id) {
             $this->paciente->where('usuario_id', $id)->delete();
             $deleted = $this->usuario->where('id', $id)->delete();
+
             return $deleted > 0;
         });
-        
+
         //  return $deletedUsuario > 0;
     }
-
 }

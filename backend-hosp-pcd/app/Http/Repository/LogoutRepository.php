@@ -6,7 +6,7 @@ use App\Models\Usuario;
 
 class LogoutRepository
 {
-    public function __construct(){}
+    public function __construct() {}
 
     public function logout(Usuario $user)
     {

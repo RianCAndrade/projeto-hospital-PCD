@@ -2,6 +2,8 @@
 
 // use Illuminate\Http\Request;
 
+use App\Http\Controllers\AgendamentoController;
+use App\Http\Controllers\AtendimentoController;
 use App\Http\Controllers\LoginController;
 use App\Http\Controllers\LogoutController;
 use App\Http\Controllers\MedicoController;
@@ -11,22 +13,21 @@ use App\Http\Controllers\RegisterController;
 use App\Http\Controllers\RhController;
 use Illuminate\Support\Facades\Route;
 
-
 Route::post('/register', [RegisterController::class, 'register']);
 Route::post('/login', [LoginController::class, 'login']);
 
-Route::middleware('auth:sanctum')->group(function (){
+Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [LogoutController::class, 'logout']);
 
     // Rotas usuario paciente
-    Route::prefix('perfil')->group(function (){
+    Route::prefix('perfil')->group(function () {
         Route::get('/', [PerfilController::class, 'index']);
         Route::put('/perfil/{id}', [PerfilController::class, 'update']);
         Route::delete('/perfil/{id}', [PerfilController::class, 'destroy']);
     });
 
     // Rota de admin
-    Route::prefix('admin')->group(function (){
+    Route::prefix('admin')->group(function () {
         Route::get('');
         Route::post('');
     });
@@ -56,10 +57,10 @@ Route::middleware('auth:sanctum')->group(function (){
 
     // Rota responsaveis
     Route::post('/responsaveis', []);
-    Route::delete('/responsaveis', );
+    Route::delete('/responsaveis');
 
     // Rotas Recepcionista
-    Route::prefix('recepcionista')->group(function (){
+    Route::prefix('recepcionista')->group(function () {
         Route::get('/paciente', [RecepcionistaController::class, 'index']);
         Route::get('/paciente/{id}', [RecepcionistaController::class, 'show']);
         Route::post('/paciente', [RecepcionistaController::class, 'store']);
@@ -67,14 +68,20 @@ Route::middleware('auth:sanctum')->group(function (){
         Route::delete('/paciente/{id}', [RecepcionistaController::class, 'destroy']);
     });
 
-    // Rota de atendimento
-    Route::prefix('atendimento')->group(function (){
-        Route::get('');
-        Route::post('');
+    // Rotas atendimento
+    Route::prefix('atendimento')->group(function () {
+        Route::get('/', [AtendimentoController::class, 'index']);
+        Route::post('/', [AtendimentoController::class, 'store']);
+        Route::get('/{id}', [AtendimentoController::class, 'show']);
+        Route::put('/{id}', [AtendimentoController::class, 'update']);
+        Route::delete('/{id}', [AtendimentoController::class, 'destroy']);
     });
 
     // Rotas agendamento
-    
-
+    Route::get('/agendamento', [AgendamentoController::class, 'index']);
+    Route::post('/agendamento', [AgendamentoController::class, 'store']);
+    Route::get('/agendamento/{id}', [AgendamentoController::class, 'show']);
+    Route::put('/agendamento/{id}', [AgendamentoController::class, 'update']);
+    Route::delete('/agendamento/{id}', [AgendamentoController::class, 'destroy']);
 
 });

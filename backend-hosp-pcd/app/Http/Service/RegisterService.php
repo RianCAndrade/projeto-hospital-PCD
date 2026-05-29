@@ -4,13 +4,12 @@ namespace App\Http\Service;
 
 use App\Enums\TiposUsuario;
 use App\Http\Repository\RegisterRepository;
-use Illuminate\Validation\Rule;
 
 class RegisterService
 {
     public function __construct(
         private RegisterRepository $registerRepository
-    ){}
+    ) {}
 
     public function register(array $dados)
     {
@@ -25,7 +24,7 @@ class RegisterService
 
         $usuario = $this->registerRepository->createUsuario($dadosUsuario);
 
-        if (!$usuario){
+        if (! $usuario) {
             return false;
         }
 
@@ -43,6 +42,7 @@ class RegisterService
             'observacoes_comunicacao' => $dados['observacoes_comunicacao'],
         ];
         $result = $this->registerRepository->createPaciente($dadosPaciente);
+
         return $result;
     }
 }

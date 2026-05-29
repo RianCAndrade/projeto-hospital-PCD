@@ -11,7 +11,7 @@ class MedicoRepository
     public function __construct(
         private Usuario $usuario,
         private Medico $medico
-    ){}
+    ) {}
 
     public function index()
     {
@@ -47,7 +47,7 @@ class MedicoRepository
 
     public function update(int $id, array $dados)
     {
-        return DB::transaction(function () use ($id, $dados){
+        return DB::transaction(function () use ($id, $dados) {
             $usuarioMedico = $this->usuario->where('id', $id)->update([
                 'nome' => $dados['nome'],
                 'cpf' => $dados['cpf'],
@@ -69,11 +69,11 @@ class MedicoRepository
 
     public function destroy(int $id)
     {
-        return DB::transaction(function () use ($id){
+        return DB::transaction(function () use ($id) {
             $usuarioMedico = $this->usuario->where('id', $id)->delete();
             $deleted = $this->medico->where('usuario_id', $usuarioMedico)->delete();
+
             return true;
         });
     }
-
 }

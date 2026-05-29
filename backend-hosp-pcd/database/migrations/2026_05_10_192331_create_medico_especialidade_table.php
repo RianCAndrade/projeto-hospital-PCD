@@ -23,7 +23,7 @@ return new class extends Migration
 
             $table->primary([
                 'medico_id',
-                'especialidade_id'
+                'especialidade_id',
             ]);
         });
     }

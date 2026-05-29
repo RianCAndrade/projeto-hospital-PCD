@@ -9,13 +9,13 @@ class MedicoController
 {
     public function __construct(
         private MedicoService $medicoService
-    ){}
+    ) {}
 
     public function index()
     {
         $result = $this->medicoService->index();
-        
-        if(!$result){
+
+        if (! $result) {
             return response()->json([
                 'error' => true,
                 'message' => 'Erro ao buscar os medicos',
@@ -34,7 +34,7 @@ class MedicoController
     {
         $result = $this->medicoService->show($id);
 
-        if(!$result){
+        if (! $result) {
             return response()->json([
                 'error' => true,
                 'message' => 'medico nao encontrado',
@@ -45,7 +45,7 @@ class MedicoController
         return response()->json([
             'error' => false,
             'message' => 'medico encontrado',
-            'data' => $result
+            'data' => $result,
         ], 200);
     }
 
@@ -64,7 +64,7 @@ class MedicoController
 
         $result = $this->medicoService->store($validated);
 
-        if(!$result){
+        if (! $result) {
             return response()->json([
                 'error' => true,
                 'message' => 'Erro ao cadastrar medico',
@@ -93,14 +93,14 @@ class MedicoController
 
         $result = $this->medicoService->update($id, $validated);
 
-        if(!$result){
+        if (! $result) {
             return response()->json([
                 'error' => true,
                 'message' => 'Medico não encontrado',
                 'data' => null,
-            ],404);
+            ], 404);
         }
-        
+
         return response()->json([
             'error' => false,
             'message' => 'Medico atualizado com sucesso',
@@ -112,7 +112,7 @@ class MedicoController
     {
         $result = $this->medicoService->destroy($id);
 
-        if($result === false){
+        if ($result === false) {
             return response()->json([
                 'error' => true,
                 'message' => 'Erro ao excluir o medico',

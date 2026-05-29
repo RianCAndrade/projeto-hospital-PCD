@@ -9,14 +9,13 @@ class RhController
 {
     public function __construct(
         private RhService $rhService
-    )
-    {}
+    ) {}
 
     public function indexMedico()
     {
         $result = $this->rhService->indexMedico();
 
-        if($result === false){
+        if ($result === false) {
             return response()->json([
                 'error' => true,
                 'message' => 'Erro ao buscar os medicos',
@@ -30,11 +29,12 @@ class RhController
             'data' => $result,
         ], 200);
     }
+
     public function showMedico(int $id)
     {
         $result = $this->rhService->showMedico($id);
 
-        if(!$result){
+        if (! $result) {
             return response()->json([
                 'error' => false,
                 'message' => 'Medico não encontrado',
@@ -64,7 +64,7 @@ class RhController
 
         $result = $this->rhService->storeMedico($validated);
 
-        if(!$result){
+        if (! $result) {
             return response()->json([
                 'error' => true,
                 'message' => 'Erro ao cadastrar medico',
@@ -78,7 +78,6 @@ class RhController
         ], 201);
     }
 
-    
     public function updateMedico(int $id, Request $request)
     {
         $validated = $request->validate([
@@ -94,14 +93,14 @@ class RhController
 
         $result = $this->rhService->updateMedico($id, $validated);
 
-        if(!$result){
+        if (! $result) {
             return response()->json([
                 'error' => true,
                 'message' => 'Medico não encontrado',
                 'data' => null,
             ]);
         }
-        
+
         return response()->json([
             'error' => false,
             'message' => 'Medico atualizado com sucesso',
@@ -113,7 +112,7 @@ class RhController
     {
         $result = $this->rhService->destroyMedico($id);
 
-        if($result === false){
+        if ($result === false) {
             return response()->json([
                 'error' => true,
                 'message' => 'Erro ao excluir o medico',
@@ -132,7 +131,7 @@ class RhController
     {
         $result = $this->rhService->indexRecepcionista();
 
-        if(!$result){
+        if (! $result) {
             return response()->json([
                 'error' => true,
                 'message' => 'Erro ao buscar os medicos',
@@ -147,12 +146,11 @@ class RhController
         ], 200);
     }
 
-
     public function showRecepcionista(int $id)
     {
         $result = $this->rhService->showRecepcionista($id);
 
-        if(!$result){
+        if (! $result) {
             return response()->json([
                 'error' => false,
                 'message' => 'Medico não encontrado',
@@ -179,7 +177,7 @@ class RhController
 
         $result = $this->rhService->storeRecepcionista($validated);
 
-        if($result === false){
+        if ($result === false) {
             return response()->json([
                 'error' => true,
                 'message' => 'Erro ao cadastrar medico',
@@ -206,7 +204,7 @@ class RhController
 
         $result = $this->rhService->updateRecepcionista($id, $validated);
 
-        if($result === false){
+        if ($result === false) {
             return response()->json([
                 'error' => true,
                 'message' => 'Medico não encontrado',
@@ -225,7 +223,7 @@ class RhController
     {
         $result = $this->rhService->destroyRecepcionista($id);
 
-        if($result === false){
+        if ($result === false) {
             return response()->json([
                 'error' => true,
                 'message' => 'Erro ao excluir o medico',

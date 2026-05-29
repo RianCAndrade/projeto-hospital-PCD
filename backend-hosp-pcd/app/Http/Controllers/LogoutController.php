@@ -7,15 +7,15 @@ use Illuminate\Http\Request;
 
 class LogoutController
 {
-    public function __construct(private LogoutService $logoutService){}
+    public function __construct(private LogoutService $logoutService) {}
 
     public function logout(Request $request)
     {
         try {
             $result = $this->logoutService->logout($request);
 
-            if($result == false){
-                    return response()->json([
+            if ($result == false) {
+                return response()->json([
                     'error' => true,
                     'message' => 'voce ja estar deslogado',
                 ], 422);
@@ -28,7 +28,7 @@ class LogoutController
         } catch (\Exception $e) {
             return response()->json([
                 'error' => true,
-                'message' => 'erro inesperado ' . $e->getMessage(),
+                'message' => 'erro inesperado '.$e->getMessage(),
             ], 500);
         }
     }

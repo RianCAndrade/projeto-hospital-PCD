@@ -1,4 +1,4 @@
-<?php 
+<?php
 
 namespace App\Http\Service;
 
@@ -8,9 +8,10 @@ use Illuminate\Support\Facades\Hash;
 class LoginService
 {
     private LoginRepository $loginRepository;
+
     public function __construct(
         LoginRepository $loginRepository
-    ){
+    ) {
         $this->loginRepository = $loginRepository;
     }
 
@@ -18,11 +19,11 @@ class LoginService
     {
         $user = $this->loginRepository->findByemail($dados['email']);
 
-        if ($user == false){
+        if ($user == false) {
             return false;
         }
 
-        if (!Hash::check($dados['senha'], $user->senha)){
+        if (! Hash::check($dados['senha'], $user->senha)) {
             return false;
         }
 

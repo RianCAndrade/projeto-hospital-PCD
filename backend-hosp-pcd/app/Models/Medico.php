@@ -6,8 +6,8 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Table;
 use Illuminate\Database\Eloquent\Model;
 
-#[Table('tbmedicos', timestamps:true)]
-#[Fillable('usuario_id','crm','descricao')]
+#[Table('tbmedicos', timestamps: true)]
+#[Fillable('usuario_id', 'crm', 'descricao')]
 class Medico extends Model
 {
     //

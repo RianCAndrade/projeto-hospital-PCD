@@ -8,7 +8,7 @@ class RhService
 {
     public function __construct(
         private RhRepository $rhRepository
-    ){}
+    ) {}
 
     public function indexMedico()
     {

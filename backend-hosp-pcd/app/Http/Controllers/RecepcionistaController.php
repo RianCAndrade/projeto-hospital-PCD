@@ -9,20 +9,20 @@ class RecepcionistaController
 {
     public function __construct(
         private RecepcionistaService $recepcionistaService
-    ){}
+    ) {}
 
     public function index()
     {
         $result = $this->recepcionistaService->index();
 
-        if(!$result){
+        if (! $result) {
             return response()->json([
                 'error' => true,
                 'message' => 'Recepcionista não encontrado',
                 'data' => null,
             ], 200);
         }
-        
+
         return response()->json([
             'error' => false,
             'message' => 'Recepcionista encontrado',
@@ -34,14 +34,14 @@ class RecepcionistaController
     {
         $result = $this->recepcionistaService->show($id);
 
-        if(!$result){
+        if (! $result) {
             return response()->json([
                 'error' => true,
                 'message' => 'Recepcionista não encontrado',
                 'data' => null,
             ], 200);
         }
-        
+
         return response()->json([
             'error' => false,
             'message' => 'Recepcionista encontrado',
@@ -61,14 +61,14 @@ class RecepcionistaController
 
         $result = $this->recepcionistaService->store($validated);
 
-        if(!$result){
+        if (! $result) {
             return response()->json([
                 'error' => true,
                 'message' => 'Erro ao cadastrar o recepcionista',
                 'data' => null,
             ], 422);
         }
-        
+
         return response()->json([
             'error' => false,
             'message' => 'Recepcionista cadastrado com sucesso',
@@ -80,14 +80,14 @@ class RecepcionistaController
     {
         $result = $this->recepcionistaService->update($id, $dados);
 
-        if(!$result){
+        if (! $result) {
             return response()->json([
                 'error' => true,
                 'message' => 'Erro ao atualizar o recepcionista',
                 'data' => null,
             ], 422);
         }
-        
+
         return response()->json([
             'error' => false,
             'message' => 'Recepcionista atualizado com sucesso',
@@ -99,14 +99,14 @@ class RecepcionistaController
     {
         $result = $this->recepcionistaService->destroy($id);
 
-        if($result === false){
+        if ($result === false) {
             return response()->json([
                 'error' => true,
                 'message' => 'erro ao deletar o recepcionista',
                 'data' => null,
             ], 422);
         }
-        
+
         return response()->json([
             'error' => false,
             'message' => 'Recepcionista excluído com sucesso',

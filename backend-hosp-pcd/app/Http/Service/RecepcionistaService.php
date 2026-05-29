@@ -8,7 +8,7 @@ class RecepcionistaService
 {
     public function __construct(
         private RecepcionistaRepository $recepcionistaRepository
-    ){}
+    ) {}
 
     public function index()
     {
