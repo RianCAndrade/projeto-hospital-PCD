@@ -81,9 +81,7 @@ export interface RegisterDto {
 }
 
 /**
- * POST /api/login   (a ser implementado pelo backend)
- *
- * Sugestão de payload — ajuste se o backend escolher outro formato.
+ * POST /api/login
  */
 export interface LoginDto {
   email: string
@@ -91,11 +89,8 @@ export interface LoginDto {
 }
 
 /**
- * Resposta esperada de /login e (futuramente) /register quando o backend
- * passar a emitir token Sanctum.
- *
- * Hoje o /register devolve apenas `data: Usuario` sem token. O frontend
- * trata `token` como opcional e, na ausência dele, redireciona para login.
+ * Resposta de /login: devolve usuario + token Sanctum.
+ * /register devolve apenas o usuario (sem token), o frontend redireciona para login.
  */
 export interface AuthResponse {
   usuario: Usuario
@@ -266,9 +261,15 @@ export interface UpdateAtendimentoDto {
 export interface CreateSenhaDto {
   agendamento_id: number
   paciente_id: number
-  /**
-   * Se omitido, o backend gera o código (ex: A001, A002...).
-   */
+/**
+ * Status atual do backend Laravel (pasta `backend-hosp-pcd/`):
+ *   ✓ POST /api/register   -> RegisterController
+ *   ✓ POST /api/login      -> LoginController
+ *   ✓ POST /api/logout     -> LogoutController
+ *   ✓ GET  /api/me         -> MeController
+ *   ✓ GET  /api/bootstrap  -> BootstrapController
+ *   ✓ Todos os CRUDs       -> implementados em Controllers próprios
+ */
   codigo?: string
 }
 

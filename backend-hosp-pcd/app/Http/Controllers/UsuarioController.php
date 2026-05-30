@@ -2,18 +2,18 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Service\AdminService;
+use App\Http\Service\UsuarioService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
-class AdminController
+class UsuarioController
 {
-    public function __construct(
-        private AdminService $adminService
-    ) {}
+    public function __construct(private UsuarioService $usuarioService) {}
 
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
-        $usuarios = $this->adminService->index();
+        $filtros = $request->only(['tipo_usuario', 'q']);
+        $usuarios = $this->usuarioService->index($filtros);
 
         return response()->json([
             'error' => false,
@@ -24,12 +24,12 @@ class AdminController
 
     public function show(int $id): JsonResponse
     {
-        $usuario = $this->adminService->show($id);
+        $usuario = $this->usuarioService->show($id);
 
         if (! $usuario) {
             return response()->json([
                 'error' => true,
-                'message' => 'Usuário não encontrado.',
+                'message' => 'Usuário nao encontrado.',
                 'data' => null,
             ], 404);
         }
@@ -43,12 +43,12 @@ class AdminController
 
     public function destroy(int $id): JsonResponse
     {
-        $deletado = $this->adminService->destroy($id);
+        $deletado = $this->usuarioService->destroy($id);
 
         if (! $deletado) {
             return response()->json([
                 'error' => true,
-                'message' => 'Usuário não encontrado.',
+                'message' => 'Usuário nao encontrado.',
                 'data' => null,
             ], 404);
         }

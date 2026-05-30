@@ -3,6 +3,7 @@
 namespace App\Http\Service;
 
 use App\Http\Repository\MedicoRepository;
+use App\Models\Medico;
 
 class MedicoService
 {
@@ -15,22 +16,22 @@ class MedicoService
         return $this->medicoRepository->index();
     }
 
-    public function show(int $id)
+    public function show(int $id): ?Medico
     {
         return $this->medicoRepository->show($id);
     }
 
-    public function store(array $dados)
+    public function store(array $dados): Medico
     {
         return $this->medicoRepository->store($dados);
     }
 
-    public function update(int $id, array $dados)
+    public function update(int $id, array $dados): ?Medico
     {
         return $this->medicoRepository->update($id, $dados);
     }
 
-    public function destroy(int $id)
+    public function destroy(int $id): bool
     {
         return $this->medicoRepository->destroy($id);
     }

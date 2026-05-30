@@ -18,7 +18,7 @@ class RegisterService
             'cpf' => $dados['cpf'],
             'email' => $dados['email'],
             'senha' => $dados['senha'],
-            'telefone' => $dados['telefone'],
+            'telefone' => $dados['telefone'] ?? null,
             'tipo_usuario' => TiposUsuario::Paciente,
         ];
 
@@ -38,8 +38,8 @@ class RegisterService
             'necessita_acessibilidade' => $dados['necessita_acessibilidade'],
             'usa_cadeira_rodas' => $dados['usa_cadeira_rodas'],
             'necessita_acompanhante' => $dados['necessita_acompanhante'],
-            'observacoes' => $dados['observacoes'],
-            'observacoes_comunicacao' => $dados['observacoes_comunicacao'],
+            'observacoes' => $dados['observacoes'] ?? null,
+            'observacoes_comunicacao' => $dados['observacoes_comunicacao'] ?? null,
         ];
         $result = $this->registerRepository->createPaciente($dadosPaciente);
 

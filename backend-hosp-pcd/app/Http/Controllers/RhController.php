@@ -53,13 +53,14 @@ class RhController
     {
         $validated = $request->validate([
             'nome' => 'required|string|max:255',
-            'cpf' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255',
+            'cpf' => 'required|string|max:255|unique:tbusuarios,cpf',
+            'email' => 'required|string|email|max:255|unique:tbusuarios,email',
             'senha' => 'required|string|max:255',
-            'telefone' => 'required|string|max:255',
-            // 'usuario_id' => 'required|integer',
-            'crm' => 'required|string|max:255',
-            'descricao' => 'required|string|max:255',
+            'telefone' => 'nullable|string|max:255',
+            'crm' => 'required|string|max:255|unique:tbmedicos,crm',
+            'descricao' => 'nullable|string|max:1000',
+            'especialidade_ids' => 'nullable|array',
+            'especialidade_ids.*' => 'integer|exists:tbespecialidades,id',
         ]);
 
         $result = $this->rhService->storeMedico($validated);
@@ -81,14 +82,15 @@ class RhController
     public function updateMedico(int $id, Request $request)
     {
         $validated = $request->validate([
-            'nome' => 'sometimes|required|string|max:255',
-            'cpf' => 'sometimes|required|string|max:255',
-            'email' => 'sometimes|required|string|email|max:255',
-            'senha' => 'sometimes|required|string|max:255',
-            'telefone' => 'sometimes|required|string|max:255',
-            // 'usuario_id' => 'required|integer',
-            'crm' => 'sometimes|required|string|max:255',
-            'descricao' => 'sometimes|required|string|max:255',
+            'nome' => 'sometimes|string|max:255',
+            'cpf' => 'sometimes|string|max:255',
+            'email' => 'sometimes|string|email|max:255',
+            'senha' => 'sometimes|string|max:255',
+            'telefone' => 'sometimes|nullable|string|max:255',
+            'crm' => 'sometimes|string|max:255',
+            'descricao' => 'sometimes|nullable|string|max:1000',
+            'especialidade_ids' => 'sometimes|array',
+            'especialidade_ids.*' => 'integer|exists:tbespecialidades,id',
         ]);
 
         $result = $this->rhService->updateMedico($id, $validated);
@@ -131,17 +133,9 @@ class RhController
     {
         $result = $this->rhService->indexRecepcionista();
 
-        if (! $result) {
-            return response()->json([
-                'error' => true,
-                'message' => 'Erro ao buscar os medicos',
-                'data' => null,
-            ], 422);
-        }
-
         return response()->json([
             'error' => false,
-            'message' => 'Medicos encontrados',
+            'message' => 'Recepcionistas encontrados.',
             'data' => $result,
         ], 200);
     }
@@ -152,15 +146,15 @@ class RhController
 
         if (! $result) {
             return response()->json([
-                'error' => false,
-                'message' => 'Medico não encontrado',
+                'error' => true,
+                'message' => 'Recepcionista nao encontrado.',
                 'data' => null,
             ], 404);
         }
 
         return response()->json([
             'error' => false,
-            'message' => 'Medico encontrado',
+            'message' => 'Recepcionista encontrado.',
             'data' => $result,
         ], 200);
     }
@@ -169,52 +163,44 @@ class RhController
     {
         $validated = $request->validate([
             'nome' => 'required|string|max:255',
-            'cpf' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255',
+            'cpf' => 'required|string|max:255|unique:tbusuarios,cpf',
+            'email' => 'required|string|email|max:255|unique:tbusuarios,email',
             'senha' => 'required|string|max:255',
-            'telefone' => 'required|string|max:255',
+            'telefone' => 'nullable|string|max:255',
         ]);
 
         $result = $this->rhService->storeRecepcionista($validated);
 
-        if ($result === false) {
-            return response()->json([
-                'error' => true,
-                'message' => 'Erro ao cadastrar medico',
-            ], 422);
-        }
-
         return response()->json([
             'error' => false,
-            'message' => 'Medico cadastrado com sucesso',
+            'message' => 'Recepcionista cadastrado com sucesso.',
             'data' => $result,
         ], 201);
-
     }
 
     public function updateRecepcionista(int $id, Request $request)
     {
         $validated = $request->validate([
-            'nome' => 'sometimes|required|string|max:255',
-            'cpf' => 'sometimes|required|string|max:255',
-            'email' => 'sometimes|required|string|email|max:255',
-            'senha' => 'sometimes|required|string|max:255',
-            'telefone' => 'sometimes|required|string|max:255',
+            'nome' => 'sometimes|string|max:255',
+            'cpf' => 'sometimes|string|max:255',
+            'email' => 'sometimes|string|email|max:255',
+            'senha' => 'sometimes|string|max:255',
+            'telefone' => 'sometimes|nullable|string|max:255',
         ]);
 
         $result = $this->rhService->updateRecepcionista($id, $validated);
 
-        if ($result === false) {
+        if (! $result) {
             return response()->json([
                 'error' => true,
-                'message' => 'Medico não encontrado',
+                'message' => 'Recepcionista nao encontrado.',
                 'data' => null,
-            ], 422);
+            ], 404);
         }
 
         return response()->json([
             'error' => false,
-            'message' => 'Medico atualizado com sucesso',
+            'message' => 'Recepcionista atualizado com sucesso.',
             'data' => $result,
         ], 200);
     }
@@ -223,18 +209,18 @@ class RhController
     {
         $result = $this->rhService->destroyRecepcionista($id);
 
-        if ($result === false) {
+        if (! $result) {
             return response()->json([
                 'error' => true,
-                'message' => 'Erro ao excluir o medico',
+                'message' => 'Recepcionista nao encontrado.',
                 'data' => null,
-            ], 422);
+            ], 404);
         }
 
         return response()->json([
             'error' => false,
-            'message' => 'Medico excluído com sucesso',
-            'data' => $result,
+            'message' => 'Recepcionista excluido com sucesso.',
+            'data' => null,
         ], 200);
     }
 }

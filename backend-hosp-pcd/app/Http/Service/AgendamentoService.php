@@ -36,4 +36,21 @@ class AgendamentoService
     {
         return $this->agendamentoRepository->destroy($id);
     }
+
+    public function updateStatus(int $id, string $status): ?Agendamento
+    {
+        return $this->agendamentoRepository->update($id, ['status' => $status]);
+    }
+
+    public function cancel(int $id): ?Agendamento
+    {
+        return $this->agendamentoRepository->update($id, ['status' => StatusAgendamento::Cancelado->value]);
+    }
+
+    public function reschedule(int $id, array $dados): ?Agendamento
+    {
+        $dados['status'] ??= StatusAgendamento::Remarcado->value;
+
+        return $this->agendamentoRepository->update($id, $dados);
+    }
 }

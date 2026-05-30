@@ -30,6 +30,7 @@ export type StatusAgendamento =
   | "agendado"
   | "confirmado"
   | "cancelado"
+  | "remarcado"
   | "finalizado"
   | "faltou"
 
@@ -42,7 +43,7 @@ export type StatusAtendimento =
   | "cancelado"
 
 /** App\Enums\StatusSenha */
-export type StatusSenha = "ativa" | "utilizada" | "expirada" | "cancelada"
+export type StatusSenha = "ativa" | "chamada" | "finalizada" | "cancelada"
 
 // ──────────────────────────────────────────────────────────────────────────
 // Catálogos abertos (cadastrados em tabelas próprias no backend)

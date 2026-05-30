@@ -111,4 +111,72 @@ class AgendamentoController
             'data' => null,
         ], 200);
     }
+
+    public function updateStatus(int $id, Request $request): JsonResponse
+    {
+        $dados = $request->validate([
+            'status' => 'required|string|in:agendado,confirmado,cancelado,finalizado,faltou,remarcado',
+        ]);
+
+        $agendamento = $this->agendamentoService->updateStatus($id, $dados['status']);
+
+        if (! $agendamento) {
+            return response()->json([
+                'error' => true,
+                'message' => 'Agendamento nao encontrado.',
+                'data' => null,
+            ], 404);
+        }
+
+        return response()->json([
+            'error' => false,
+            'message' => 'Status do agendamento atualizado.',
+            'data' => $agendamento,
+        ], 200);
+    }
+
+    public function cancel(int $id): JsonResponse
+    {
+        $agendamento = $this->agendamentoService->cancel($id);
+
+        if (! $agendamento) {
+            return response()->json([
+                'error' => true,
+                'message' => 'Agendamento nao encontrado.',
+                'data' => null,
+            ], 404);
+        }
+
+        return response()->json([
+            'error' => false,
+            'message' => 'Agendamento cancelado com sucesso.',
+            'data' => $agendamento,
+        ], 200);
+    }
+
+    public function reschedule(int $id, Request $request): JsonResponse
+    {
+        $dados = $request->validate([
+            'data_agendamento' => 'required|date',
+            'horario' => 'required|date_format:H:i',
+            'medico_id' => 'sometimes|required|exists:tbmedicos,id',
+            'especialidade_id' => 'sometimes|required|exists:tbespecialidades,id',
+        ]);
+
+        $agendamento = $this->agendamentoService->reschedule($id, $dados);
+
+        if (! $agendamento) {
+            return response()->json([
+                'error' => true,
+                'message' => 'Agendamento nao encontrado.',
+                'data' => null,
+            ], 404);
+        }
+
+        return response()->json([
+            'error' => false,
+            'message' => 'Agendamento remarcado com sucesso.',
+            'data' => $agendamento,
+        ], 200);
+    }
 }

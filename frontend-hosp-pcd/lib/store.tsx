@@ -145,7 +145,11 @@ export function HospitalProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const logout = useCallback(async () => {
-    await api.auth.logout()
+    try {
+      await api.auth.logout()
+    } catch {
+      // Silencioso — mesmo que o backend retorne erro, limpa o estado local
+    }
     setUsuarioLogado(null)
   }, [])
 

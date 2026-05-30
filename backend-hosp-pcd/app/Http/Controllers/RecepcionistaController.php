@@ -76,8 +76,16 @@ class RecepcionistaController
         ], 201);
     }
 
-    public function update(int $id, array $dados)
+    public function update(int $id, Request $request)
     {
+        $dados = $request->validate([
+            'nome' => 'sometimes|string|max:255',
+            'cpf' => 'sometimes|string|max:255',
+            'email' => 'sometimes|string|email|max:255',
+            'senha' => 'sometimes|string|max:255',
+            'telefone' => 'sometimes|nullable|string|max:255',
+        ]);
+
         $result = $this->recepcionistaService->update($id, $dados);
 
         if (! $result) {

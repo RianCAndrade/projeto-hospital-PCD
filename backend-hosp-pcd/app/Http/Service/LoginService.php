@@ -29,6 +29,9 @@ class LoginService
 
         $token = $user->createToken('api-token')->plainTextToken;
 
-        return $token;
+        return [
+            'usuario' => $user,
+            'token' => $token,
+        ];
     }
 }

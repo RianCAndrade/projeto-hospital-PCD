@@ -14,6 +14,10 @@ class Agendamento extends Model
 {
     use SoftDeletes;
 
+    protected $casts = [
+        'data_agendamento' => 'date:Y-m-d',
+    ];
+
     public function paciente(): BelongsTo
     {
         return $this->belongsTo(Paciente::class, 'paciente_id');
