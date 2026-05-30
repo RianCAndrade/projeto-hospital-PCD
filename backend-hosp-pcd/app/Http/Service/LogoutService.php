@@ -9,13 +9,13 @@ class LogoutService
 {
     public function __construct(
         private LogoutRepository $logoutRepository
-    ){}
+    ) {}
 
     public function logout(Request $request)
     {
         $user = $request->user();
 
-        if(!$user){
+        if (! $user) {
             return false;
         }
 

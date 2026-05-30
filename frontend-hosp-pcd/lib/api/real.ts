@@ -20,59 +20,59 @@ import type {
  * Implementacao real, que consome o backend Laravel deste projeto
  * (`backend-hosp-pcd/`).
  *
- * Mapeamento de rotas (espelha `routes/api.php` + plano de expansão):
+ * Mapeamento de rotas (espelha `routes/api.php`):
  *
  *   ✓ POST /api/register                           (RegisterController)
- *   - POST /api/login                              (a implementar)
- *   - POST /api/logout                             (auth:sanctum)
- *   - GET  /api/me                                 (auth:sanctum)
+ *   ✓ POST /api/login                              (LoginController)
+ *   ✓ POST /api/logout                             (LogoutController)
+ *   ✓ GET  /api/me                                 (MeController)
+ *   ✓ GET  /api/bootstrap                          (BootstrapController)
  *
- *   - GET  /api/bootstrap                          (a implementar)
+ *   ✓ GET    /api/pacientes                        (PacienteController)
+ *   ✓ GET    /api/pacientes/{id}
+ *   ✓ POST   /api/pacientes
+ *   ✓ PUT    /api/pacientes/{id}
+ *   ✓ DELETE /api/pacientes/{id}
+ *   ✓ GET    /api/pacientes/meus
  *
- *   - GET    /api/pacientes                        (auth:sanctum)
- *   - GET    /api/pacientes/{id}
- *   - POST   /api/pacientes
- *   - PUT    /api/pacientes/{id}
- *   - DELETE /api/pacientes/{id}
- *   - GET    /api/pacientes/meus                   (filhos do logado)
+ *   ✓ POST   /api/responsaveis                     (ResponsavelController)
+ *   ✓ DELETE /api/responsaveis/{id}
+ *   ✓ GET    /api/responsaveis
  *
- *   - POST   /api/responsaveis
- *   - DELETE /api/responsaveis/{id}
+ *   ✓ GET    /api/medicos                          (MedicoController)
+ *   ✓ GET    /api/medicos/{id}
+ *   ✓ POST   /api/medicos
+ *   ✓ PUT    /api/medicos/{id}
+ *   ✓ DELETE /api/medicos/{id}
  *
- *   - GET    /api/medicos
- *   - GET    /api/medicos/{id}
- *   - POST   /api/medicos
- *   - PUT    /api/medicos/{id}
- *   - DELETE /api/medicos/{id}
+ *   ✓ GET    /api/especialidades                   (EspecialidadeController)
+ *   ✓ POST   /api/especialidades
+ *   ✓ DELETE /api/especialidades/{id}
  *
- *   - GET    /api/especialidades
- *   - POST   /api/especialidades
- *   - DELETE /api/especialidades/{id}
+ *   ✓ GET    /api/tipos-deficiencia                (TipoDeficienciaController)
+ *   ✓ POST   /api/tipos-deficiencia
+ *   ✓ DELETE /api/tipos-deficiencia/{id}
  *
- *   - GET    /api/tipos-deficiencia
- *   - POST   /api/tipos-deficiencia
- *   - DELETE /api/tipos-deficiencia/{id}
+ *   ✓ GET    /api/agendamentos                     (AgendamentoController)
+ *   ✓ GET    /api/agendamentos/{id}
+ *   ✓ POST   /api/agendamentos
+ *   ✓ PATCH  /api/agendamentos/{id}/status
+ *   ✓ PATCH  /api/agendamentos/{id}/cancelar
+ *   ✓ PATCH  /api/agendamentos/{id}/remarcar
  *
- *   - GET    /api/agendamentos
- *   - GET    /api/agendamentos/{id}
- *   - POST   /api/agendamentos
- *   - PATCH  /api/agendamentos/{id}/status
- *   - PATCH  /api/agendamentos/{id}/cancelar
- *   - PATCH  /api/agendamentos/{id}/remarcar
+ *   ✓ GET    /api/atendimentos                     (AtendimentoController)
+ *   ✓ GET    /api/atendimentos/{id}
+ *   ✓ POST   /api/atendimentos
+ *   ✓ PUT    /api/atendimentos/{id}
  *
- *   - GET    /api/atendimentos
- *   - GET    /api/atendimentos/{id}
- *   - POST   /api/atendimentos
- *   - PUT    /api/atendimentos/{id}
+ *   ✓ GET    /api/senhas                           (SenhaController)
+ *   ✓ POST   /api/senhas
+ *   ✓ PATCH  /api/senhas/{id}/status
+ *   ✓ PATCH  /api/senhas/{id}/chamar
  *
- *   - GET    /api/senhas
- *   - POST   /api/senhas
- *   - PATCH  /api/senhas/{id}/status
- *   - PATCH  /api/senhas/{id}/chamar
- *
- *   - GET    /api/usuarios
- *   - GET    /api/usuarios/{id}
- *   - DELETE /api/usuarios/{id}
+ *   ✓ GET    /api/usuarios                         (UsuarioController)
+ *   ✓ GET    /api/usuarios/{id}
+ *   ✓ DELETE /api/usuarios/{id}
  *
  * Convenções compartilhadas:
  *   - Toda resposta usa o envelope `{ error, message, data }` (apiFetch
@@ -100,9 +100,9 @@ export const realApi: HospitalApi = {
     },
 
     /**
-     * POST /api/login   (pendente no backend)
+     * POST /api/login
      *
-     * Quando implementado, deve devolver:
+     * Devolve:
      *   { error: false, message: "...", data: { usuario, token } }
      * O token é Sanctum (Bearer) e fica salvo em localStorage.
      */

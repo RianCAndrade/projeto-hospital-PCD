@@ -3,127 +3,121 @@
 namespace App\Http\Controllers;
 
 use App\Http\Service\MedicoService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class MedicoController
 {
     public function __construct(
         private MedicoService $medicoService
-    ){}
+    ) {}
 
-    public function index()
+    public function index(): JsonResponse
     {
         $result = $this->medicoService->index();
-        
-        if(!$result){
-            return response()->json([
-                'error' => true,
-                'message' => 'Erro ao buscar os medicos',
-                'data' => null,
-            ], 422);
-        }
 
         return response()->json([
             'error' => false,
-            'message' => 'Medicos encontrados',
+            'message' => 'Medicos encontrados.',
             'data' => $result,
         ], 200);
     }
 
-    public function show(int $id)
+    public function show(int $id): JsonResponse
     {
         $result = $this->medicoService->show($id);
 
-        if(!$result){
+        if (! $result) {
             return response()->json([
                 'error' => true,
-                'message' => 'medico nao encontrado',
+                'message' => 'Medico nao encontrado.',
                 'data' => null,
             ], 404);
         }
 
         return response()->json([
             'error' => false,
-            'message' => 'medico encontrado',
-            'data' => $result
+            'message' => 'Medico encontrado.',
+            'data' => $result,
         ], 200);
     }
 
-    public function store(Request $request)
+    public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'nome' => 'required|string|max:255',
-            'cpf' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255',
-            'senha' => 'required|string|max:255',
-            'telefone' => 'required|string|max:255',
-            // 'usuario_id' => 'required|integer',
-            'crm' => 'required|string|max:255',
-            'descricao' => 'required|string|max:255',
+            // Modo 1: vincular usuário existente.
+            'usuario_id' => 'nullable|exists:tbusuarios,id',
+
+            // Modo 2: criar usuário inline.
+            'nome' => 'required_without:usuario_id|string|max:255',
+            'cpf' => 'required_without:usuario_id|string|max:255|unique:tbusuarios,cpf',
+            'email' => 'required_without:usuario_id|string|email|max:255|unique:tbusuarios,email',
+            'senha' => 'required_without:usuario_id|string|max:255',
+            'telefone' => 'nullable|string|max:255',
+
+            // Dados do médico
+            'crm' => 'required|string|max:255|unique:tbmedicos,crm',
+            'descricao' => 'nullable|string|max:1000',
+            'especialidade_ids' => 'nullable|array',
+            'especialidade_ids.*' => 'integer|exists:tbespecialidades,id',
         ]);
 
         $result = $this->medicoService->store($validated);
 
-        if(!$result){
-            return response()->json([
-                'error' => true,
-                'message' => 'Erro ao cadastrar medico',
-            ], 422);
-        }
-
         return response()->json([
             'error' => false,
-            'message' => 'Medico cadastrado com sucesso',
+            'message' => 'Medico cadastrado com sucesso.',
             'data' => $result,
         ], 201);
     }
 
-    public function update(int $id, Request $request)
+    public function update(int $id, Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'nome' => 'sometimes|required|string|max:255',
-            'cpf' => 'sometimes|required|string|max:255',
-            'email' => 'sometimes|required|string|email|max:255',
-            'senha' => 'sometimes|required|string|max:255',
-            'telefone' => 'sometimes|required|string|max:255',
-            // 'usuario_id' => 'required|integer',
-            'crm' => 'sometimes|required|string|max:255',
-            'descricao' => 'sometimes|required|string|max:255',
+            'nome' => 'sometimes|string|max:255',
+            'cpf' => 'sometimes|string|max:255',
+            'email' => 'sometimes|string|email|max:255',
+            'senha' => 'sometimes|string|max:255',
+            'telefone' => 'sometimes|nullable|string|max:255',
+            'crm' => 'sometimes|string|max:255',
+            'descricao' => 'sometimes|nullable|string|max:1000',
+            'especialidade_ids' => 'sometimes|array',
+            'especialidade_ids.*' => 'integer|exists:tbespecialidades,id',
         ]);
 
         $result = $this->medicoService->update($id, $validated);
 
-        if(!$result){
+        if (! $result) {
             return response()->json([
                 'error' => true,
-                'message' => 'Medico não encontrado',
+                'message' => 'Medico nao encontrado.',
                 'data' => null,
-            ],404);
+            ], 404);
         }
-        
+
         return response()->json([
             'error' => false,
-            'message' => 'Medico atualizado com sucesso',
+            'message' => 'Medico atualizado com sucesso.',
             'data' => $result,
         ], 200);
     }
 
-    public function destroy(int $id)
+    public function destroy(int $id): JsonResponse
     {
         $result = $this->medicoService->destroy($id);
 
-        if($result === false){
+        if (! $result) {
             return response()->json([
                 'error' => true,
-                'message' => 'Erro ao excluir o medico',
+                'message' => 'Medico nao encontrado.',
                 'data' => null,
-            ], 422);
+            ], 404);
         }
 
         return response()->json([
             'error' => false,
-            'message' => 'Medico excluído com sucesso',
-            'data' => $result,
+            'message' => 'Medico excluido com sucesso.',
+            'data' => null,
         ], 200);
     }
 }

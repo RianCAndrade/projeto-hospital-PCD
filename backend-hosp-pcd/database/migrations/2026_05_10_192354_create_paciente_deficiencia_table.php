@@ -26,7 +26,7 @@ return new class extends Migration
 
             $table->primary([
                 'paciente_id',
-                'tipo_deficiencia_id'
+                'tipo_deficiencia_id',
             ]);
         });
     }

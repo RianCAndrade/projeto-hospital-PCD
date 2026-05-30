@@ -5,7 +5,7 @@ namespace App\Enums;
 enum StatusSenha: string
 {
     case Ativa = 'ativa';
-    case Utilizada = 'utilizada';
-    case Expirada = 'expirada';
+    case Chamada = 'chamada';
+    case Finalizada = 'finalizada';
     case Cancelada = 'cancelada';
 }

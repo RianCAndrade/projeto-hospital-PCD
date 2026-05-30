@@ -4,13 +4,12 @@ namespace App\Http\Service;
 
 use App\Enums\TiposUsuario;
 use App\Http\Repository\RegisterRepository;
-use Illuminate\Validation\Rule;
 
 class RegisterService
 {
     public function __construct(
         private RegisterRepository $registerRepository
-    ){}
+    ) {}
 
     public function register(array $dados)
     {
@@ -19,13 +18,13 @@ class RegisterService
             'cpf' => $dados['cpf'],
             'email' => $dados['email'],
             'senha' => $dados['senha'],
-            'telefone' => $dados['telefone'],
+            'telefone' => $dados['telefone'] ?? null,
             'tipo_usuario' => TiposUsuario::Paciente,
         ];
 
         $usuario = $this->registerRepository->createUsuario($dadosUsuario);
 
-        if (!$usuario){
+        if (! $usuario) {
             return false;
         }
 
@@ -39,10 +38,11 @@ class RegisterService
             'necessita_acessibilidade' => $dados['necessita_acessibilidade'],
             'usa_cadeira_rodas' => $dados['usa_cadeira_rodas'],
             'necessita_acompanhante' => $dados['necessita_acompanhante'],
-            'observacoes' => $dados['observacoes'],
-            'observacoes_comunicacao' => $dados['observacoes_comunicacao'],
+            'observacoes' => $dados['observacoes'] ?? null,
+            'observacoes_comunicacao' => $dados['observacoes_comunicacao'] ?? null,
         ];
         $result = $this->registerRepository->createPaciente($dadosPaciente);
+
         return $result;
     }
 }
