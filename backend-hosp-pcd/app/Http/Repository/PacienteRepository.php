@@ -9,10 +9,17 @@ class PacienteRepository
 {
     public function __construct(private Paciente $paciente) {}
 
+    /** Relações eager-loaded em todas as leituras (para casar com o tipo do frontend). */
+    private array $with = [
+        'usuario',
+        'responsaveis.usuario',
+        'deficiencias.tipoDeficiencia',
+    ];
+
     public function index(): mixed
     {
         return $this->paciente
-            ->with('usuario')
+            ->with($this->with)
             ->orderBy('nome')
             ->get();
     }
@@ -25,7 +32,7 @@ class PacienteRepository
     public function show(int $id): ?Paciente
     {
         return $this->paciente
-            ->with('usuario')
+            ->with($this->with)
             ->find($id);
     }
 
@@ -44,7 +51,13 @@ class PacienteRepository
 
     public function destroy(int $id): bool
     {
-        return (bool) $this->paciente->where('id', $id)->delete();
+        $paciente = $this->paciente->find($id);
+
+        if (! $paciente) {
+            return false;
+        }
+
+        return (bool) $paciente->delete();
     }
 
     public function meusPacientes(int $usuarioId): mixed
@@ -53,7 +66,7 @@ class PacienteRepository
 
         return $this->paciente
             ->whereIn('id', $pacienteIds)
-            ->with('usuario')
+            ->with($this->with)
             ->orderBy('nome')
             ->get();
     }

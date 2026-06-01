@@ -10,6 +10,8 @@ class MeRepository
 
     public function show(int $id): ?Usuario
     {
-        return $this->usuario->with('paciente')->find($id);
+        return $this->usuario
+            ->with(['paciente', 'medico.especialidades', 'responsavelDe'])
+            ->find($id);
     }
 }

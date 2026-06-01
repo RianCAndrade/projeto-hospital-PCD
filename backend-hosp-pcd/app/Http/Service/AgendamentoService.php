@@ -10,9 +10,9 @@ class AgendamentoService
 {
     public function __construct(private AgendamentoRepository $agendamentoRepository) {}
 
-    public function index(): mixed
+    public function index(array $filtros = []): mixed
     {
-        return $this->agendamentoRepository->index();
+        return $this->agendamentoRepository->index($filtros);
     }
 
     public function store(array $dados): Agendamento

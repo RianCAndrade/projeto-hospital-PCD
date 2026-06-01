@@ -19,7 +19,8 @@ class ResponsavelController
             'principal' => 'sometimes|boolean',
             'usuario_id' => 'nullable|exists:tbusuarios,id',
             'nome' => 'required_without:usuario_id|string|max:255',
-            'email' => 'required_without:usuario_id|string|email|max:255',
+            'cpf' => 'nullable|string|max:20|unique:tbusuarios,cpf',
+            'email' => 'required_without:usuario_id|string|email|max:255|unique:tbusuarios,email',
             'telefone' => 'nullable|string|max:255',
             'senha' => 'required_without:usuario_id|string|max:255',
         ]);
@@ -30,6 +31,7 @@ class ResponsavelController
             } else {
                 $usuario = Usuario::create([
                     'nome' => $validated['nome'],
+                    'cpf' => $validated['cpf'] ?? null,
                     'email' => $validated['email'],
                     'telefone' => $validated['telefone'] ?? null,
                     'senha' => Hash::make($validated['senha']),

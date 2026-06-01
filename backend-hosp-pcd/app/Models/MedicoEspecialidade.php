@@ -10,5 +10,5 @@ use Illuminate\Database\Eloquent\Model;
 #[Fillable('medico_id', 'especialidade_id')]
 class MedicoEspecialidade extends Model
 {
-    //
+    public $timestamps = false;
 }

@@ -10,9 +10,18 @@ class AgendamentoController
 {
     public function __construct(private AgendamentoService $agendamentoService) {}
 
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
-        $agendamentos = $this->agendamentoService->index();
+        $filtros = $request->only([
+            'paciente_id',
+            'medico_id',
+            'especialidade_id',
+            'status',
+            'data_de',
+            'data_ate',
+        ]);
+
+        $agendamentos = $this->agendamentoService->index($filtros);
 
         return response()->json([
             'error' => false,

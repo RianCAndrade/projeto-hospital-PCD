@@ -18,7 +18,10 @@ return new class extends Migration
             $table->id();
 
             $table->string('nome');
-            $table->string('cpf')->unique();
+            // CPF é opcional para funcionários (admin/rh/recepcionista/médico)
+            // criados pelo painel administrativo. Para pacientes/responsáveis
+            // o frontend exige no formulário de cadastro.
+            $table->string('cpf')->nullable()->unique();
             $table->string('email')->unique();
             $table->string('senha');
             $table->string('telefone')->nullable();
@@ -33,7 +36,7 @@ return new class extends Migration
                 'nome' => 'Administrador',
                 'cpf' => '123.456.789-00',
                 'email' => 'admin@admin.com',
-                'senha' => Hash::make('admin123'), //admin123
+                'senha' => Hash::make('admin123'), // admin123
                 'telefone' => '(11) 99999-9999',
                 'tipo_usuario' => TiposUsuario::Admin->value,
                 'created_at' => now(),
@@ -58,7 +61,7 @@ return new class extends Migration
                 'tipo_usuario' => TiposUsuario::Medico->value,
                 'created_at' => now(),
                 'updated_at' => now(),
-            ]
+            ],
         ]);
     }
 

@@ -264,6 +264,7 @@ export function HospitalProvider({ children }: { children: React.ReactNode }) {
             {
               id: novo.usuario_id,
               nome: dto.nome!,
+              cpf: dto.cpf ?? null,
               email: dto.email!,
               telefone: dto.telefone ?? null,
               tipo_usuario: "responsavel",

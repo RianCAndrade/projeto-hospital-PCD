@@ -52,30 +52,45 @@ export interface BackendResponse<T> {
 /**
  * POST /api/register
  *
- * O backend valida exatamente esses campos
- * (ver `App\Http\Controllers\RegisterController::register`).
+ * O backend valida condicionalmente conforme `tipo_usuario`:
+ *
+ *   - Quando `tipo_usuario === "paciente"` (padrão):
+ *     `cpf`, `data_nascimento`, `sexo`, `possui_autismo`,
+ *     `necessita_acessibilidade`, `usa_cadeira_rodas` e
+ *     `necessita_acompanhante` são obrigatórios; é criada
+ *     uma linha em `tbpacientes` vinculada ao usuário.
+ *
+ *   - Para `admin`, `rh`, `recepcionista`, `medico`,
+ *     `responsavel`: apenas `nome`, `email` e `senha` são
+ *     obrigatórios. Os demais campos podem ser omitidos.
+ *
  * O campo `senha` é hasheado no controller antes de gravar.
  */
 export interface RegisterDto {
   nome: string
-  cpf: string
   email: string
-  telefone?: string
   senha: string
-  data_nascimento: string
-  sexo: string
-  possui_autismo: boolean
-  necessita_acessibilidade: boolean
-  usa_cadeira_rodas: boolean
-  necessita_acompanhante: boolean
+  /** Padrão no backend: `paciente`. */
+  tipo_usuario?: TipoUsuario
+
+  cpf?: string
+  telefone?: string
+
+  // Campos de paciente (obrigatórios só quando tipo_usuario === "paciente")
+  data_nascimento?: string
+  sexo?: string
+  possui_autismo?: boolean
+  necessita_acessibilidade?: boolean
+  usa_cadeira_rodas?: boolean
+  necessita_acompanhante?: boolean
   observacoes?: string
   observacoes_comunicacao?: string
-  tipo_usuario: TipoUsuario
+
   /**
-   * Usado apenas no autocadastro público do paciente.
-   * Quando `true`, o backend deve marcar este usuário como
-   * "aguardando vinculo de responsavel" — o vínculo em
-   * `tbresponsavel_paciente` é criado em etapa posterior.
+   * Usado apenas no autocadastro público do paciente. Quando `true`,
+   * o paciente sinaliza que precisa vincular um responsável depois.
+   * O backend apenas valida — o vínculo em `tbresponsavel_paciente`
+   * é criado em etapa posterior via `/api/responsaveis`.
    */
   precisa_responsavel?: boolean
 }
@@ -156,6 +171,7 @@ export interface CreateResponsavelDto {
 
   /** Modo 2: criar usuário responsável inline. */
   nome?: string
+  cpf?: string | null
   email?: string
   telefone?: string | null
   senha?: string
@@ -173,15 +189,16 @@ export interface CreateResponsavelDto {
  */
 export interface CreateMedicoDto {
   usuario_id?: number
-  // Se `usuario_id` não vier, o backend pode criar o Usuario com:
+  // Se `usuario_id` não vier, o backend cria o Usuario com:
   nome?: string
+  cpf?: string | null
   email?: string
   telefone?: string | null
   senha?: string
 
   crm: string
   descricao?: string | null
-  especialidade_ids: number[]
+  especialidade_ids?: number[]
 }
 
 export interface UpdateMedicoDto {
@@ -258,18 +275,15 @@ export interface UpdateAtendimentoDto {
 // Senhas (fila de chamada)
 // ──────────────────────────────────────────────────────────────────────────
 
+/**
+ * POST /api/senhas
+ *
+ * `codigo` é opcional — quando vazio, o backend (`SenhaService::store`)
+ * gera no formato A001/A002/A003... incrementando o último id.
+ */
 export interface CreateSenhaDto {
   agendamento_id: number
   paciente_id: number
-/**
- * Status atual do backend Laravel (pasta `backend-hosp-pcd/`):
- *   ✓ POST /api/register   -> RegisterController
- *   ✓ POST /api/login      -> LoginController
- *   ✓ POST /api/logout     -> LogoutController
- *   ✓ GET  /api/me         -> MeController
- *   ✓ GET  /api/bootstrap  -> BootstrapController
- *   ✓ Todos os CRUDs       -> implementados em Controllers próprios
- */
   codigo?: string
 }
 
@@ -319,13 +333,13 @@ export interface BootstrapData {
 // ──────────────────────────────────────────────────────────────────────────
 export interface HospitalApi {
   auth: {
-    /** POST /api/register — implementado no backend */
+    /** POST /api/register */
     register(dto: RegisterDto): Promise<AuthResponse>
-    /** POST /api/login — pendente no backend */
+    /** POST /api/login */
     login(dto: LoginDto): Promise<AuthResponse>
-    /** POST /api/logout — pendente no backend */
+    /** POST /api/logout */
     logout(): Promise<void>
-    /** GET /api/me — pendente no backend */
+    /** GET /api/me */
     me(): Promise<Usuario | null>
   }
 

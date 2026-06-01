@@ -115,10 +115,17 @@ export const mockApi: HospitalApi = {
     async register(dto: RegisterDto) {
       await delay(400)
 
-      // Validações espelhando o RegisterController
-      if (!dto.cpf) throw new ApiError(422, "O campo cpf é obrigatório.")
-      if (!dto.data_nascimento) throw new ApiError(422, "O campo data_nascimento é obrigatório.")
-      if (!dto.sexo) throw new ApiError(422, "O campo sexo é obrigatório.")
+      const tipo = dto.tipo_usuario ?? "paciente"
+      const ehPaciente = tipo === "paciente"
+
+      // Validações espelhando o RegisterController:
+      // CPF + dados PCD são obrigatórios SÓ para paciente.
+      if (ehPaciente) {
+        if (!dto.cpf) throw new ApiError(422, "O campo cpf é obrigatório.")
+        if (!dto.data_nascimento)
+          throw new ApiError(422, "O campo data_nascimento é obrigatório.")
+        if (!dto.sexo) throw new ApiError(422, "O campo sexo é obrigatório.")
+      }
 
       if (
         usuariosState.some(
@@ -127,42 +134,42 @@ export const mockApi: HospitalApi = {
       ) {
         throw new ApiError(422, "email ja cadastrado")
       }
-      if (
-        usuariosState.some((u) => u.cpf === dto.cpf)
-      ) {
+      if (dto.cpf && usuariosState.some((u) => u.cpf === dto.cpf)) {
         throw new ApiError(422, "cpf ja cadastrado")
       }
 
       const novo: Usuario = {
         id: gerarId("usuario"),
         nome: dto.nome,
-        cpf: dto.cpf,
+        cpf: dto.cpf ?? null,
         email: dto.email,
         telefone: dto.telefone ?? null,
-        tipo_usuario: dto.tipo_usuario,
+        tipo_usuario: tipo,
         created_at: nowISO(),
         updated_at: nowISO(),
       }
       usuariosState = [...usuariosState, novo]
 
-      const novoPaciente: Paciente = {
-        id: gerarId("paciente"),
-        usuario_id: novo.id,
-        nome: dto.nome,
-        data_nascimento: dto.data_nascimento,
-        cpf: dto.cpf,
-        sexo: dto.sexo,
-        possui_autismo: dto.possui_autismo,
-        necessita_acessibilidade: dto.necessita_acessibilidade,
-        usa_cadeira_rodas: dto.usa_cadeira_rodas,
-        necessita_acompanhante: dto.necessita_acompanhante,
-        observacoes: dto.observacoes ?? null,
-        observacoes_comunicacao: dto.observacoes_comunicacao ?? null,
-        created_at: nowISO(),
-        updated_at: nowISO(),
-        deficiencias: [],
+      if (ehPaciente) {
+        const novoPaciente: Paciente = {
+          id: gerarId("paciente"),
+          usuario_id: novo.id,
+          nome: dto.nome,
+          data_nascimento: dto.data_nascimento!,
+          cpf: dto.cpf ?? null,
+          sexo: dto.sexo!,
+          possui_autismo: dto.possui_autismo ?? false,
+          necessita_acessibilidade: dto.necessita_acessibilidade ?? false,
+          usa_cadeira_rodas: dto.usa_cadeira_rodas ?? false,
+          necessita_acompanhante: dto.necessita_acompanhante ?? false,
+          observacoes: dto.observacoes ?? null,
+          observacoes_comunicacao: dto.observacoes_comunicacao ?? null,
+          created_at: nowISO(),
+          updated_at: nowISO(),
+          deficiencias: [],
+        }
+        pacientesState = [...pacientesState, novoPaciente]
       }
-      pacientesState = [...pacientesState, novoPaciente]
 
       return { usuario: novo } satisfies AuthResponse
     },
@@ -307,6 +314,7 @@ export const mockApi: HospitalApi = {
         const novoUsuario: Usuario = {
           id: gerarId("usuario"),
           nome: dto.nome,
+          cpf: dto.cpf ?? null,
           email: dto.email,
           telefone: dto.telefone ?? null,
           tipo_usuario: "responsavel",
@@ -365,6 +373,7 @@ export const mockApi: HospitalApi = {
         const novoUsuario: Usuario = {
           id: gerarId("usuario"),
           nome: dto.nome,
+          cpf: dto.cpf ?? null,
           email: dto.email,
           telefone: dto.telefone ?? null,
           tipo_usuario: "medico",

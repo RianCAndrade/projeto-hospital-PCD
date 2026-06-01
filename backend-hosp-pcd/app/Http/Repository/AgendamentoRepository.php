@@ -8,10 +8,31 @@ class AgendamentoRepository
 {
     public function __construct(private Agendamento $agendamento) {}
 
-    public function index(): mixed
+    public function index(array $filtros = []): mixed
     {
-        return $this->agendamento
-            ->with(['paciente', 'medico', 'especialidade', 'recepcionista'])
+        $query = $this->agendamento
+            ->with(['paciente', 'medico.usuario', 'especialidade', 'recepcionista']);
+
+        if (! empty($filtros['paciente_id'])) {
+            $query->where('paciente_id', $filtros['paciente_id']);
+        }
+        if (! empty($filtros['medico_id'])) {
+            $query->where('medico_id', $filtros['medico_id']);
+        }
+        if (! empty($filtros['especialidade_id'])) {
+            $query->where('especialidade_id', $filtros['especialidade_id']);
+        }
+        if (! empty($filtros['status'])) {
+            $query->where('status', $filtros['status']);
+        }
+        if (! empty($filtros['data_de'])) {
+            $query->whereDate('data_agendamento', '>=', $filtros['data_de']);
+        }
+        if (! empty($filtros['data_ate'])) {
+            $query->whereDate('data_agendamento', '<=', $filtros['data_ate']);
+        }
+
+        return $query
             ->orderBy('data_agendamento')
             ->orderBy('horario')
             ->get();
@@ -19,13 +40,15 @@ class AgendamentoRepository
 
     public function store(array $dados): Agendamento
     {
-        return $this->agendamento->create($dados);
+        return $this->agendamento
+            ->create($dados)
+            ->load(['paciente', 'medico.usuario', 'especialidade', 'recepcionista']);
     }
 
     public function show(int $id): ?Agendamento
     {
         return $this->agendamento
-            ->with(['paciente', 'medico', 'especialidade', 'recepcionista'])
+            ->with(['paciente', 'medico.usuario', 'especialidade', 'recepcionista'])
             ->find($id);
     }
 
@@ -39,7 +62,7 @@ class AgendamentoRepository
 
         $agendamento->update($dados);
 
-        return $agendamento;
+        return $agendamento->fresh(['paciente', 'medico.usuario', 'especialidade', 'recepcionista']);
     }
 
     public function destroy(int $id): bool

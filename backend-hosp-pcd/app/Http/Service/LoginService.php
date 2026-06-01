@@ -30,7 +30,7 @@ class LoginService
         $token = $user->createToken('api-token')->plainTextToken;
 
         return [
-            'usuario' => $user,
+            'usuario' => $user->fresh(['paciente', 'medico.especialidades', 'responsavelDe']),
             'token' => $token,
         ];
     }

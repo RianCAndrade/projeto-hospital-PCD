@@ -15,11 +15,11 @@ class RegisterService
     {
         $dadosUsuario = [
             'nome' => $dados['nome'],
-            'cpf' => $dados['cpf'],
+            'cpf' => $dados['cpf'] ?? null,
             'email' => $dados['email'],
             'senha' => $dados['senha'],
             'telefone' => $dados['telefone'] ?? null,
-            'tipo_usuario' => TiposUsuario::Paciente,
+            'tipo_usuario' => $dados['tipo_usuario'] ?? TiposUsuario::Paciente->value,
         ];
 
         $usuario = $this->registerRepository->createUsuario($dadosUsuario);
@@ -28,21 +28,24 @@ class RegisterService
             return false;
         }
 
-        $dadosPaciente = [
-            'usuario_id' => $usuario->id,
-            'nome' => $dados['nome'],
-            'cpf' => $usuario->cpf,
-            'data_nascimento' => $dados['data_nascimento'],
-            'sexo' => $dados['sexo'],
-            'possui_autismo' => $dados['possui_autismo'],
-            'necessita_acessibilidade' => $dados['necessita_acessibilidade'],
-            'usa_cadeira_rodas' => $dados['usa_cadeira_rodas'],
-            'necessita_acompanhante' => $dados['necessita_acompanhante'],
-            'observacoes' => $dados['observacoes'] ?? null,
-            'observacoes_comunicacao' => $dados['observacoes_comunicacao'] ?? null,
-        ];
-        $result = $this->registerRepository->createPaciente($dadosPaciente);
+        // Só cria registro em tbpacientes para self-registration de paciente.
+        // Funcionários (admin/rh/recepcionista/medico) ficam só em tbusuarios.
+        if ($usuario->tipo_usuario === TiposUsuario::Paciente) {
+            $this->registerRepository->createPaciente([
+                'usuario_id' => $usuario->id,
+                'nome' => $dados['nome'],
+                'cpf' => $usuario->cpf,
+                'data_nascimento' => $dados['data_nascimento'],
+                'sexo' => $dados['sexo'],
+                'possui_autismo' => $dados['possui_autismo'],
+                'necessita_acessibilidade' => $dados['necessita_acessibilidade'],
+                'usa_cadeira_rodas' => $dados['usa_cadeira_rodas'],
+                'necessita_acompanhante' => $dados['necessita_acompanhante'],
+                'observacoes' => $dados['observacoes'] ?? null,
+                'observacoes_comunicacao' => $dados['observacoes_comunicacao'] ?? null,
+            ]);
+        }
 
-        return $result;
+        return $usuario->fresh(['paciente', 'medico', 'responsavelDe']);
     }
 }

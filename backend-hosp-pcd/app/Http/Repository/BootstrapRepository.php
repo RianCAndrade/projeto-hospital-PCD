@@ -25,14 +25,20 @@ class BootstrapRepository
     public function load(int $usuarioId): array
     {
         return [
-            'usuario' => $this->usuario->with('paciente')->find($usuarioId),
+            'usuario' => $this->usuario
+                ->with(['paciente', 'medico', 'responsavelDe'])
+                ->find($usuarioId),
             'usuarios' => $this->usuario->orderBy('nome')->get(),
-            'pacientes' => $this->paciente->with('usuario')->orderBy('nome')->get(),
-            'responsaveis' => $this->responsavelPaciente->get(),
-            'medicos' => $this->medico->get(),
+            'pacientes' => $this->paciente
+                ->with(['usuario', 'responsaveis.usuario', 'deficiencias.tipoDeficiencia'])
+                ->orderBy('nome')
+                ->get(),
+            'responsaveis' => $this->responsavelPaciente->with(['usuario', 'paciente'])->get(),
+            'medicos' => $this->medico->with(['usuario', 'especialidades'])->get(),
             'agendamentos' => $this->agendamento
-                ->with(['paciente', 'medico', 'especialidade', 'recepcionista'])
+                ->with(['paciente', 'medico.usuario', 'especialidade', 'recepcionista'])
                 ->orderBy('data_agendamento')
+                ->orderBy('horario')
                 ->get(),
             'especialidades' => $this->especialidade->orderBy('nome')->get(),
             'tipos_deficiencia' => $this->tipoDeficiencia->orderBy('nome')->get(),
