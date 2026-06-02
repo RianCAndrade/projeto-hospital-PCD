@@ -32,13 +32,13 @@ return new class extends Migration
         });
 
         // 1) Vincula o usuário "Medico" que já vem do seed de tbusuarios (id=3)
-        // DB::table('tbmedicos')->insert([
-        //     'usuario_id' => 4,
-        //     'crm' => 'CRM/SP 100100',
-        //     'descricao' => 'Cardiologia pediátrica.',
-        //     'created_at' => now(),
-        //     'updated_at' => now(),
-        // ]);
+        DB::table('tbmedicos')->insert([
+            'usuario_id' => 4,
+            'crm' => 'CRM/SP 100100',
+            'descricao' => 'Cardiologia pediátrica.',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
 
         // 2) Cria mais dois médicos (usuário + linha em tbmedicos)
         $anaId = DB::table('tbusuarios')->insertGetId([
@@ -76,33 +76,6 @@ return new class extends Migration
             'created_at' => now(),
             'updated_at' => now(),
         ]);
-        $alexId = DB::table('tbusuarios')->insertGetId([
-            'nome' => 'alex santos',
-            'cpf' => '123.456.000-00',
-            'email' => 'alex@acolher.com',
-            'senha' => Hash::make('medico123'),
-            'telefone' => '(11) 97777-6669',
-            'tipo_usuario' => 'medico',
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
-        DB::table('tbmedicos')->insert([
-            'usuario_id' => $alexId,
-            'crm' => 'CRM/SP 300399',
-            'descricao' => 'Neurologia pediátrica.',
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
-        // [
-        //         'nome' => 'Alex',
-        //         'cpf' => '123.456.789-02',
-        //         'email' => 'alex@acolher.com',
-        //         'senha' => Hash::make('medico123'),
-        //         'telefone' => '(11) 99999-9999',
-        //         'tipo_usuario' => TiposUsuario::Medico->value,
-        //         'created_at' => now(),
-        //         'updated_at' => now(),
-        //     ],
     }
 
     /**
