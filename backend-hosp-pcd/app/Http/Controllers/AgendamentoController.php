@@ -89,7 +89,7 @@ class AgendamentoController
             'recepcionista_id' => 'nullable|exists:tbusuarios,id',
             'data_agendamento' => 'sometimes|required|date',
             'horario' => 'sometimes|required|date_format:H:i',
-            'status' => 'sometimes|required|in:agendado,confirmado,cancelado,finalizado,faltou',
+            'status' => 'sometimes|required|in:agendado,confirmado,em_atendimento,cancelado,finalizado,faltou',
             'observacoes' => 'nullable|string|max:500',
         ]);
 
@@ -124,7 +124,7 @@ class AgendamentoController
     public function updateStatus(int $id, Request $request): JsonResponse
     {
         $dados = $request->validate([
-            'status' => 'required|string|in:agendado,confirmado,cancelado,finalizado,faltou,remarcado',
+            'status' => 'required|string|in:agendado,confirmado,em_atendimento,cancelado,finalizado,faltou,remarcado',
         ]);
 
         $agendamento = $this->agendamentoService->updateStatus($id, $dados['status']);

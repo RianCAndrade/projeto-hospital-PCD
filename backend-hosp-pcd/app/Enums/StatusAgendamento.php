@@ -6,6 +6,7 @@ enum StatusAgendamento: string
 {
     case Agendado = 'agendado';
     case Confirmado = 'confirmado';
+    case EmAtendimento = 'em_atendimento';
     case Cancelado = 'cancelado';
     case Remarcado = 'remarcado';
     case Finalizado = 'finalizado';
