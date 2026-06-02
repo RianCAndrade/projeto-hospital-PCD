@@ -115,6 +115,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::patch('/{id}/status', [AgendamentoController::class, 'updateStatus']);
         Route::patch('/{id}/cancelar', [AgendamentoController::class, 'cancel']);
         Route::patch('/{id}/remarcar', [AgendamentoController::class, 'reschedule']);
+        Route::patch('/{id}/chamar', [AgendamentoController::class, 'chamar']);
+        Route::patch('/{id}/iniciar', [AgendamentoController::class, 'iniciarAtendimento']);
     });
 
     // ─── Especialidades ───

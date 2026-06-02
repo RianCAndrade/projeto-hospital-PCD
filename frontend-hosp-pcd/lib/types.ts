@@ -29,6 +29,8 @@ export type TipoUsuario =
 export type StatusAgendamento =
   | "agendado"
   | "confirmado"
+  | "chamado"
+  | "em_atendimento"
   | "cancelado"
   | "remarcado"
   | "finalizado"

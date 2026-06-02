@@ -46,6 +46,13 @@ interface HospitalContextValue {
   login: (email: string, senha: string) => Promise<Usuario | null>
   logout: () => Promise<void>
   cadastrar: (dto: RegisterDto) => Promise<Usuario>
+  /**
+   * Re-busca o bootstrap completo do backend. Útil para ressincronizar o
+   * estado local após mudanças feitas em outro dispositivo/sessão
+   * (ex.: recepção confirma um agendamento e o painel do paciente
+   * precisa refletir isso sem refresh manual).
+   */
+  carregarBootstrap: () => Promise<void>
 
   // Dados (todos seguem o shape do backend)
   usuarios: Usuario[]
@@ -78,6 +85,19 @@ interface HospitalContextValue {
     id: number,
     dto: RescheduleAgendamentoDto,
   ) => Promise<void>
+  /**
+   * Move `confirmado` → `chamado`. O backend reverte outros `chamado`
+   * do mesmo médico para `confirmado`; o `setAgendamentos` aqui usa o
+   * `agendamento` retornado, mas como o backend só devolve o item
+   * atualizado (não a lista), recarregamos o estado para refletir o
+   * "anterior voltou pra fila".
+   */
+  chamarAgendamento: (id: number) => Promise<Agendamento>
+  /**
+   * Move `chamado` → `em_atendimento`. O backend rejeita (422) se o
+   * médico pular a etapa de chamar.
+   */
+  iniciarAtendimentoAgendamento: (id: number) => Promise<Agendamento>
 
   criarPaciente: (dto: CreatePacienteDto) => Promise<Paciente>
 
@@ -111,38 +131,45 @@ export function HospitalProvider({ children }: { children: React.ReactNode }) {
   const [usuarioLogado, setUsuarioLogado] = useState<Usuario | null>(null)
   const [carregando, setCarregando] = useState(true)
 
-  // Carga inicial: tenta o bootstrap do backend; se falhar, mantém mock.
+  // Carga inicial + helper para ressincronizar após login/cadastro.
+  const carregarBootstrap = useCallback(async () => {
+    try {
+      const data = await api.bootstrap()
+      setUsuarioLogado(data.usuario)
+      setUsuarios(data.usuarios)
+      setPacientes(data.pacientes)
+      setResponsaveis(data.responsaveis)
+      setMedicos(data.medicos)
+      setAgendamentos(data.agendamentos)
+      setEspecialidades(data.especialidades)
+      setTiposDeficiencia(data.tipos_deficiencia)
+    } catch {
+      // bootstrap pode não existir ainda no backend — silencioso
+    }
+  }, [])
+
   useEffect(() => {
     let ativo = true
     ;(async () => {
-      try {
-        const data = await api.bootstrap()
-        if (!ativo) return
-        setUsuarioLogado(data.usuario)
-        setUsuarios(data.usuarios)
-        setPacientes(data.pacientes)
-        setResponsaveis(data.responsaveis)
-        setMedicos(data.medicos)
-        setAgendamentos(data.agendamentos)
-        setEspecialidades(data.especialidades)
-        setTiposDeficiencia(data.tipos_deficiencia)
-      } catch {
-        // bootstrap pode não existir ainda no backend — silencioso
-      } finally {
-        if (ativo) setCarregando(false)
-      }
+      if (!ativo) return
+      await carregarBootstrap()
+      if (ativo) setCarregando(false)
     })()
     return () => {
       ativo = false
     }
-  }, [])
+  }, [carregarBootstrap])
 
   // ── Auth ──────────────────────────────────────────────────────────────
   const login = useCallback(async (email: string, senha: string) => {
     const res = await api.auth.login({ email, senha })
     setUsuarioLogado(res.usuario)
+    // Ressincroniza tabelas (responsaveis, pacientes, etc.) com o estado
+    // do servidor, já que o login pode ser de um usuário que não estava
+    // carregado no momento do bootstrap inicial.
+    await carregarBootstrap()
     return res.usuario
-  }, [])
+  }, [carregarBootstrap])
 
   const logout = useCallback(async () => {
     try {
@@ -156,11 +183,12 @@ export function HospitalProvider({ children }: { children: React.ReactNode }) {
   const cadastrar = useCallback(async (dto: RegisterDto) => {
     const res = await api.auth.register(dto)
     setUsuarios((prev) => [...prev, res.usuario])
-    // O backend real (RegisterController) NÃO devolve token,
-    // então não logamos automaticamente. A página deve redirecionar
-    // para /login. O mock segue o mesmo contrato.
+    // O backend pode ter criado um Paciente e/ou Responsavel + vinculo
+    // na mesma chamada. Re-baixamos o bootstrap para que a UI veja esses
+    // registros sem precisar de um refresh manual.
+    await carregarBootstrap()
     return res.usuario
-  }, [])
+  }, [carregarBootstrap])
 
   // ── Helpers ───────────────────────────────────────────────────────────
   const getUsuario = useCallback(
@@ -244,6 +272,21 @@ export function HospitalProvider({ children }: { children: React.ReactNode }) {
     [],
   )
 
+  const chamarAgendamento = useCallback(async (id: number) => {
+    const atualizado = await api.agendamentos.chamar(id)
+    // O backend reverteu o "chamado" anterior do mesmo médico para
+    // `confirmado`, mas só devolveu este item no payload. Re-baixamos
+    // o bootstrap para refletir a mudança global na fila.
+    await carregarBootstrap()
+    return atualizado
+  }, [carregarBootstrap])
+
+  const iniciarAtendimentoAgendamento = useCallback(async (id: number) => {
+    const atualizado = await api.agendamentos.iniciar(id)
+    setAgendamentos((prev) => prev.map((a) => (a.id === id ? atualizado : a)))
+    return atualizado
+  }, [])
+
   const criarPaciente = useCallback(async (dto: CreatePacienteDto) => {
     const novo = await api.pacientes.create(dto)
     setPacientes((prev) => [...prev, novo])
@@ -305,6 +348,7 @@ export function HospitalProvider({ children }: { children: React.ReactNode }) {
       login,
       logout,
       cadastrar,
+      carregarBootstrap,
       usuarios,
       pacientes,
       responsaveis,
@@ -323,6 +367,8 @@ export function HospitalProvider({ children }: { children: React.ReactNode }) {
       alterarStatusAgendamento,
       cancelarAgendamento,
       remarcarAgendamento,
+      chamarAgendamento,
+      iniciarAtendimentoAgendamento,
       criarPaciente,
       vincularResponsavel,
       removerResponsavel,
@@ -336,6 +382,7 @@ export function HospitalProvider({ children }: { children: React.ReactNode }) {
       login,
       logout,
       cadastrar,
+      carregarBootstrap,
       usuarios,
       pacientes,
       responsaveis,
@@ -354,6 +401,8 @@ export function HospitalProvider({ children }: { children: React.ReactNode }) {
       alterarStatusAgendamento,
       cancelarAgendamento,
       remarcarAgendamento,
+      chamarAgendamento,
+      iniciarAtendimentoAgendamento,
       criarPaciente,
       vincularResponsavel,
       removerResponsavel,

@@ -89,7 +89,7 @@ class AgendamentoController
             'recepcionista_id' => 'nullable|exists:tbusuarios,id',
             'data_agendamento' => 'sometimes|required|date',
             'horario' => 'sometimes|required|date_format:H:i',
-            'status' => 'sometimes|required|in:agendado,confirmado,cancelado,finalizado,faltou',
+            'status' => 'sometimes|required|in:agendado,confirmado,em_atendimento,cancelado,finalizado,faltou',
             'observacoes' => 'nullable|string|max:500',
         ]);
 
@@ -124,7 +124,7 @@ class AgendamentoController
     public function updateStatus(int $id, Request $request): JsonResponse
     {
         $dados = $request->validate([
-            'status' => 'required|string|in:agendado,confirmado,cancelado,finalizado,faltou,remarcado',
+            'status' => 'required|string|in:agendado,confirmado,chamado,em_atendimento,cancelado,finalizado,faltou,remarcado',
         ]);
 
         $agendamento = $this->agendamentoService->updateStatus($id, $dados['status']);
@@ -185,6 +185,73 @@ class AgendamentoController
         return response()->json([
             'error' => false,
             'message' => 'Agendamento remarcado com sucesso.',
+            'data' => $agendamento,
+        ], 200);
+    }
+
+    /**
+     * PATCH /api/agendamentos/{id}/chamar
+     *
+     * Move o agendamento de `confirmado` para `chamado` (estado
+     * intermediário que avisa que o médico chamou o paciente).
+     * Reverte outros `chamado` do mesmo médico para `confirmado`.
+     */
+    public function chamar(int $id): JsonResponse
+    {
+        try {
+            $agendamento = $this->agendamentoService->chamar($id);
+        } catch (\InvalidArgumentException $e) {
+            return response()->json([
+                'error' => true,
+                'message' => $e->getMessage(),
+                'data' => null,
+            ], 422);
+        }
+
+        if (! $agendamento) {
+            return response()->json([
+                'error' => true,
+                'message' => 'Agendamento nao encontrado.',
+                'data' => null,
+            ], 404);
+        }
+
+        return response()->json([
+            'error' => false,
+            'message' => 'Paciente chamado com sucesso.',
+            'data' => $agendamento,
+        ], 200);
+    }
+
+    /**
+     * PATCH /api/agendamentos/{id}/iniciar
+     *
+     * Move o agendamento de `chamado` para `em_atendimento`. Falha com
+     * 422 se o médico pular a etapa de "chamar" o paciente.
+     */
+    public function iniciarAtendimento(int $id): JsonResponse
+    {
+        try {
+            $agendamento = $this->agendamentoService->iniciarAtendimento($id);
+        } catch (\InvalidArgumentException $e) {
+            return response()->json([
+                'error' => true,
+                'message' => $e->getMessage(),
+                'data' => null,
+            ], 422);
+        }
+
+        if (! $agendamento) {
+            return response()->json([
+                'error' => true,
+                'message' => 'Agendamento nao encontrado.',
+                'data' => null,
+            ], 404);
+        }
+
+        return response()->json([
+            'error' => false,
+            'message' => 'Atendimento iniciado com sucesso.',
             'data' => $agendamento,
         ], 200);
     }

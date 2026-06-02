@@ -63,8 +63,32 @@ let agendamentosState: Agendamento[] = [...agendamentosMock]
 let atendimentosState: Atendimento[] = []
 let senhasState: Senha[] = []
 
-const SESSAO_KEY = "acolher_mock_session"
+/**
+ * Estado do mock persistido em localStorage para que múltiplas abas
+ * (ex.: recepção confirma em uma aba, paciente em outra) enxerguem
+ * a mudança sem precisar de backend real. Cada slice é salvo em uma
+ * chave separada para minimizar o custo de serialização.
+ */
+const STORAGE_PREFIX = "acolher_mock_"
+const STORAGE_KEYS = {
+  usuarios: STORAGE_PREFIX + "usuarios",
+  pacientes: STORAGE_PREFIX + "pacientes",
+  responsaveis: STORAGE_PREFIX + "responsaveis",
+  medicos: STORAGE_PREFIX + "medicos",
+  especialidades: STORAGE_PREFIX + "especialidades",
+  tipos_deficiencia: STORAGE_PREFIX + "tipos_deficiencia",
+  agendamentos: STORAGE_PREFIX + "agendamentos",
+  atendimentos: STORAGE_PREFIX + "atendimentos",
+  senhas: STORAGE_PREFIX + "senhas",
+  nextId: STORAGE_PREFIX + "nextId",
+} as const
 
+/**
+ * Contador de IDs. Precisa ser declarado ANTES de `hidratarEstado` /
+ * `persistirEstado` porque eles o leem/escrevem, e o módulo já tenta
+ * hidratar no carregamento (linha mais abaixo) — caso contrário o
+ * `let` ainda estaria no Temporal Dead Zone.
+ */
 let nextId: Record<string, number> = {
   usuario: 100,
   paciente: 100,
@@ -76,6 +100,80 @@ let nextId: Record<string, number> = {
   atendimento: 100,
   senha: 100,
 }
+
+function lerStorage<T>(chave: string, fallback: T): T {
+  if (typeof window === "undefined") return fallback
+  try {
+    const raw = window.localStorage.getItem(chave)
+    if (!raw) return fallback
+    return JSON.parse(raw) as T
+  } catch {
+    return fallback
+  }
+}
+
+function escreverStorage<T>(chave: string, valor: T) {
+  if (typeof window === "undefined") return
+  try {
+    window.localStorage.setItem(chave, JSON.stringify(valor))
+  } catch {
+    // localStorage pode estar cheio/bloqueado — silencioso
+  }
+}
+
+/** Hidrata o estado em memória a partir do localStorage (se houver). */
+function hidratarEstado() {
+  usuariosState = lerStorage(STORAGE_KEYS.usuarios, usuariosState)
+  pacientesState = lerStorage(STORAGE_KEYS.pacientes, pacientesState)
+  responsaveisState = lerStorage(
+    STORAGE_KEYS.responsaveis,
+    responsaveisState,
+  )
+  medicosState = lerStorage(STORAGE_KEYS.medicos, medicosState)
+  especialidadesState = lerStorage(
+    STORAGE_KEYS.especialidades,
+    especialidadesState,
+  )
+  tiposDeficienciaState = lerStorage(
+    STORAGE_KEYS.tipos_deficiencia,
+    tiposDeficienciaState,
+  )
+  agendamentosState = lerStorage(STORAGE_KEYS.agendamentos, agendamentosState)
+  atendimentosState = lerStorage(STORAGE_KEYS.atendimentos, atendimentosState)
+  senhasState = lerStorage(STORAGE_KEYS.senhas, senhasState)
+  nextId = lerStorage(STORAGE_KEYS.nextId, nextId)
+}
+
+/** Salva todos os slices no localStorage. */
+function persistirEstado() {
+  escreverStorage(STORAGE_KEYS.usuarios, usuariosState)
+  escreverStorage(STORAGE_KEYS.pacientes, pacientesState)
+  escreverStorage(STORAGE_KEYS.responsaveis, responsaveisState)
+  escreverStorage(STORAGE_KEYS.medicos, medicosState)
+  escreverStorage(STORAGE_KEYS.especialidades, especialidadesState)
+  escreverStorage(STORAGE_KEYS.tipos_deficiencia, tiposDeficienciaState)
+  escreverStorage(STORAGE_KEYS.agendamentos, agendamentosState)
+  escreverStorage(STORAGE_KEYS.atendimentos, atendimentosState)
+  escreverStorage(STORAGE_KEYS.senhas, senhasState)
+  escreverStorage(STORAGE_KEYS.nextId, nextId)
+}
+
+// Tenta hidratar já no carregamento do módulo (lado cliente)
+if (typeof window !== "undefined") {
+  hidratarEstado()
+
+  // Sincronia entre abas: quando OUTRA aba grava no localStorage
+  // (ex.: recepção confirma um agendamento), o evento `storage` dispara
+  // automaticamente nesta aba. Re-hidratamos o estado em memória e
+  // emitimos um evento customizado para a UI re-buscar o bootstrap.
+  window.addEventListener("storage", (e) => {
+    if (!e.key || !e.key.startsWith(STORAGE_PREFIX)) return
+    hidratarEstado()
+    window.dispatchEvent(new CustomEvent("acolher:mock-updated"))
+  })
+}
+
+const SESSAO_KEY = "acolher_mock_session"
 
 function gerarId(entidade: keyof typeof nextId): number {
   nextId[entidade] += 1
@@ -117,6 +215,7 @@ export const mockApi: HospitalApi = {
 
       const tipo = dto.tipo_usuario ?? "paciente"
       const ehPaciente = tipo === "paciente"
+      const precisaResponsavel = !!dto.necessita_acompanhante
 
       // Validações espelhando o RegisterController:
       // CPF + dados PCD são obrigatórios SÓ para paciente.
@@ -125,6 +224,20 @@ export const mockApi: HospitalApi = {
         if (!dto.data_nascimento)
           throw new ApiError(422, "O campo data_nascimento é obrigatório.")
         if (!dto.sexo) throw new ApiError(422, "O campo sexo é obrigatório.")
+      }
+
+      if (ehPaciente && precisaResponsavel) {
+        if (!dto.responsavel_nome)
+          throw new ApiError(422, "O campo responsavel_nome é obrigatório.")
+        if (!dto.responsavel_email)
+          throw new ApiError(422, "O campo responsavel_email é obrigatório.")
+        if (!dto.responsavel_senha)
+          throw new ApiError(422, "O campo responsavel_senha é obrigatório.")
+        if (!dto.responsavel_parentesco)
+          throw new ApiError(
+            422,
+            "O campo responsavel_parentesco é obrigatório.",
+          )
       }
 
       if (
@@ -136,6 +249,16 @@ export const mockApi: HospitalApi = {
       }
       if (dto.cpf && usuariosState.some((u) => u.cpf === dto.cpf)) {
         throw new ApiError(422, "cpf ja cadastrado")
+      }
+      if (
+        ehPaciente &&
+        precisaResponsavel &&
+        usuariosState.some(
+          (u) =>
+            u.email.toLowerCase() === dto.responsavel_email!.toLowerCase(),
+        )
+      ) {
+        throw new ApiError(422, "responsavel email ja cadastrado")
       }
 
       const novo: Usuario = {
@@ -169,8 +292,34 @@ export const mockApi: HospitalApi = {
           deficiencias: [],
         }
         pacientesState = [...pacientesState, novoPaciente]
+
+        if (precisaResponsavel) {
+          const novoResponsavelUsuario: Usuario = {
+            id: gerarId("usuario"),
+            nome: dto.responsavel_nome!,
+            cpf: dto.responsavel_cpf ?? null,
+            email: dto.responsavel_email!,
+            telefone: dto.responsavel_telefone ?? null,
+            tipo_usuario: "responsavel",
+            created_at: nowISO(),
+            updated_at: nowISO(),
+          }
+          usuariosState = [...usuariosState, novoResponsavelUsuario]
+
+          const vinculo: ResponsavelPaciente = {
+            id: gerarId("responsavel"),
+            usuario_id: novoResponsavelUsuario.id,
+            paciente_id: novoPaciente.id,
+            parentesco: dto.responsavel_parentesco!,
+            principal: dto.responsavel_principal ?? true,
+            created_at: nowISO(),
+            updated_at: nowISO(),
+          }
+          responsaveisState = [...responsaveisState, vinculo]
+        }
       }
 
+      persistirEstado()
       return { usuario: novo } satisfies AuthResponse
     },
 
@@ -208,6 +357,11 @@ export const mockApi: HospitalApi = {
 
   async bootstrap() {
     await delay(200)
+    // Re-hidrata o estado a partir do localStorage a cada chamada,
+    // garantindo que mudanças feitas em outras abas (recepção confirma
+    // um agendamento, paciente cadastra, etc.) sejam enxergadas pelo
+    // polling que o painel do paciente faz a cada 30s.
+    hidratarEstado()
     const id = lerSessao()
     const usuario = id ? usuariosState.find((u) => u.id === id) ?? null : null
     return {
@@ -261,6 +415,7 @@ export const mockApi: HospitalApi = {
         paciente_id: novo.id,
       }))
       pacientesState = [...pacientesState, novo]
+      persistirEstado()
       return novo
     },
     async update(id, dto: UpdatePacienteDto) {
@@ -273,11 +428,13 @@ export const mockApi: HospitalApi = {
         updated_at: nowISO(),
       }
       pacientesState = pacientesState.map((p) => (p.id === id ? atualizado : p))
+      persistirEstado()
       return atualizado
     },
     async delete(id) {
       await delay(200)
       pacientesState = pacientesState.filter((p) => p.id !== id)
+      persistirEstado()
     },
     async meusPacientes() {
       await delay(150)
@@ -335,11 +492,13 @@ export const mockApi: HospitalApi = {
         updated_at: nowISO(),
       }
       responsaveisState = [...responsaveisState, novo]
+      persistirEstado()
       return novo
     },
     async delete(id) {
       await delay(150)
       responsaveisState = responsaveisState.filter((r) => r.id !== id)
+      persistirEstado()
     },
   },
 
@@ -391,10 +550,11 @@ export const mockApi: HospitalApi = {
         created_at: nowISO(),
         updated_at: nowISO(),
         especialidades: especialidadesState.filter((e) =>
-          dto.especialidade_ids.includes(e.id),
+          (dto.especialidade_ids ?? []).includes(e.id),
         ),
       }
       medicosState = [...medicosState, novo]
+      persistirEstado()
       return novo
     },
     async update(id, dto: UpdateMedicoDto) {
@@ -413,11 +573,13 @@ export const mockApi: HospitalApi = {
         updated_at: nowISO(),
       }
       medicosState = medicosState.map((m) => (m.id === id ? atualizado : m))
+      persistirEstado()
       return atualizado
     },
     async delete(id) {
       await delay(200)
       medicosState = medicosState.filter((m) => m.id !== id)
+      persistirEstado()
     },
   },
 
@@ -433,11 +595,13 @@ export const mockApi: HospitalApi = {
         nome: dto.nome,
       }
       especialidadesState = [...especialidadesState, nova]
+      persistirEstado()
       return nova
     },
     async delete(id) {
       await delay(150)
       especialidadesState = especialidadesState.filter((e) => e.id !== id)
+      persistirEstado()
     },
   },
 
@@ -453,11 +617,13 @@ export const mockApi: HospitalApi = {
         nome: dto.nome,
       }
       tiposDeficienciaState = [...tiposDeficienciaState, novo]
+      persistirEstado()
       return novo
     },
     async delete(id) {
       await delay(150)
       tiposDeficienciaState = tiposDeficienciaState.filter((t) => t.id !== id)
+      persistirEstado()
     },
   },
 
@@ -499,6 +665,7 @@ export const mockApi: HospitalApi = {
         updated_at: nowISO(),
       }
       agendamentosState = [novo, ...agendamentosState]
+      persistirEstado()
       return novo
     },
     async updateStatus(id: number, status: StatusAgendamento) {
@@ -509,6 +676,7 @@ export const mockApi: HospitalApi = {
       agendamentosState = agendamentosState.map((a) =>
         a.id === id ? atualizado : a,
       )
+      persistirEstado()
       return atualizado
     },
     async cancel(id) {
@@ -531,7 +699,53 @@ export const mockApi: HospitalApi = {
       agendamentosState = agendamentosState.map((a) =>
         a.id === id ? atualizado : a,
       )
+      persistirEstado()
       return atualizado
+    },
+    /**
+     * Espelha `AgendamentoService::chamar` do backend: exige
+     * status `confirmado` e reverte outros `chamado` do mesmo
+     * médico para `confirmado`.
+     */
+    async chamar(id) {
+      await delay(200)
+      const ag = agendamentosState.find((a) => a.id === id)
+      if (!ag) throw new ApiError(404, "Agendamento não encontrado")
+      if (ag.status !== "confirmado") {
+        throw new ApiError(
+          422,
+          "Somente agendamentos confirmados podem ser chamados.",
+        )
+      }
+      agendamentosState = agendamentosState.map((a) => {
+        if (a.id === id) {
+          return { ...a, status: "chamado", updated_at: nowISO() }
+        }
+        if (a.medico_id === ag.medico_id && a.status === "chamado") {
+          return { ...a, status: "confirmado", updated_at: nowISO() }
+        }
+        return a
+      })
+      persistirEstado()
+      const atualizado = agendamentosState.find((a) => a.id === id)
+      if (!atualizado) throw new ApiError(404, "Agendamento não encontrado")
+      return atualizado
+    },
+    /**
+     * Espelha `AgendamentoService::iniciarAtendimento` do backend:
+     * só permite a transição se o status atual for `chamado`.
+     */
+    async iniciar(id) {
+      await delay(200)
+      const ag = agendamentosState.find((a) => a.id === id)
+      if (!ag) throw new ApiError(404, "Agendamento não encontrado")
+      if (ag.status !== "chamado") {
+        throw new ApiError(
+          422,
+          "Somente agendamentos chamados podem ser iniciados.",
+        )
+      }
+      return mockApi.agendamentos.updateStatus(id, "em_atendimento")
     },
   },
 
@@ -562,6 +776,7 @@ export const mockApi: HospitalApi = {
         updated_at: nowISO(),
       }
       atendimentosState = [novo, ...atendimentosState]
+      persistirEstado()
       return novo
     },
     async update(id, dto: UpdateAtendimentoDto) {
@@ -576,6 +791,7 @@ export const mockApi: HospitalApi = {
       atendimentosState = atendimentosState.map((a) =>
         a.id === id ? atualizado : a,
       )
+      persistirEstado()
       return atualizado
     },
   },
@@ -601,6 +817,7 @@ export const mockApi: HospitalApi = {
         updated_at: nowISO(),
       }
       senhasState = [...senhasState, nova]
+      persistirEstado()
       return nova
     },
     async updateStatus(id: number, dto: UpdateSenhaStatusDto) {
@@ -609,6 +826,7 @@ export const mockApi: HospitalApi = {
       if (!s) throw new ApiError(404, "Senha não encontrada")
       const atualizada: Senha = { ...s, status: dto.status, updated_at: nowISO() }
       senhasState = senhasState.map((x) => (x.id === id ? atualizada : x))
+      persistirEstado()
       return atualizada
     },
     async chamar(id) {
@@ -621,6 +839,7 @@ export const mockApi: HospitalApi = {
         updated_at: nowISO(),
       }
       senhasState = senhasState.map((x) => (x.id === id ? atualizada : x))
+      persistirEstado()
       return atualizada
     },
   },
@@ -651,6 +870,7 @@ export const mockApi: HospitalApi = {
     async delete(id) {
       await delay(200)
       usuariosState = usuariosState.filter((u) => u.id !== id)
+      persistirEstado()
     },
   },
 }

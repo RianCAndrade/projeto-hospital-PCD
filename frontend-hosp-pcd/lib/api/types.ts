@@ -87,12 +87,19 @@ export interface RegisterDto {
   observacoes_comunicacao?: string
 
   /**
-   * Usado apenas no autocadastro público do paciente. Quando `true`,
-   * o paciente sinaliza que precisa vincular um responsável depois.
-   * O backend apenas valida — o vínculo em `tbresponsavel_paciente`
-   * é criado em etapa posterior via `/api/responsaveis`.
+   * Quando `necessita_acompanhante === true`, o backend exige os campos
+   * `responsavel_*` abaixo e cria, na mesma transação, o `Usuario`
+   * (`tipo_usuario = "responsavel"`) + o vínculo em
+   * `tbresponsavel_paciente`. Quando `false` (ou ausente), esses campos
+   * são ignorados e nenhum responsável é criado.
    */
-  precisa_responsavel?: boolean
+  responsavel_nome?: string
+  responsavel_cpf?: string
+  responsavel_email?: string
+  responsavel_telefone?: string
+  responsavel_senha?: string
+  responsavel_parentesco?: string
+  responsavel_principal?: boolean
 }
 
 /**
@@ -387,6 +394,18 @@ export interface HospitalApi {
     updateStatus(id: number, status: StatusAgendamento): Promise<Agendamento>
     cancel(id: number): Promise<Agendamento>
     reschedule(id: number, dto: RescheduleAgendamentoDto): Promise<Agendamento>
+    /**
+     * Move o agendamento de `confirmado` para `chamado` (estado
+     * intermediário). Reverte automaticamente outros `chamado` do
+     * mesmo médico para `confirmado`. Rejeita (422) se o status
+     * atual não for `confirmado`.
+     */
+    chamar(id: number): Promise<Agendamento>
+    /**
+     * Move o agendamento de `chamado` para `em_atendimento`. Rejeita
+     * (422) se o médico pular a etapa de "chamar".
+     */
+    iniciar(id: number): Promise<Agendamento>
   }
 
   atendimentos: {

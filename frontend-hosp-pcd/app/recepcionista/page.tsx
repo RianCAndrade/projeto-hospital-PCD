@@ -8,6 +8,7 @@ import { StatusBadge } from "@/components/status-badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 import {
   Select,
   SelectContent,
@@ -39,6 +40,9 @@ import {
   CalendarClock,
   X,
   UserPlus,
+  CheckCircle2,
+  CalendarPlus,
+  AlertCircle,
 } from "lucide-react"
 import { toast } from "sonner"
 import type { Agendamento } from "@/lib/types"
@@ -65,12 +69,15 @@ export default function RecepcionistaPage() {
     agendamentos,
     medicos,
     especialidades,
+    pacientes,
     getMedicoNome,
     getEspecialidadeNome,
     getPaciente,
     remarcarAgendamento,
     cancelarAgendamento,
     cadastrar,
+    criarAgendamento,
+    alterarStatusAgendamento,
   } = useHospital()
   const [busca, setBusca] = useState("")
   const [filtroEspecialidade, setFiltroEspecialidade] = useState<string>("todas")
@@ -89,6 +96,28 @@ export default function RecepcionistaPage() {
   const [pacTel, setPacTel] = useState("")
   const [pacSenha, setPacSenha] = useState("")
   const [pacPrecisaResp, setPacPrecisaResp] = useState(false)
+  // Campos PCD do paciente presencial
+  const [pacDataNascimento, setPacDataNascimento] = useState("")
+  const [pacSexo, setPacSexo] = useState("")
+  const [pacPossuiAutismo, setPacPossuiAutismo] = useState(false)
+  const [pacNecessitaAcessibilidade, setPacNecessitaAcessibilidade] =
+    useState(false)
+  const [pacUsaCadeiraRodas, setPacUsaCadeiraRodas] = useState(false)
+  const [pacObservacoes, setPacObservacoes] = useState("")
+  const [pacObservacoesComunicacao, setPacObservacoesComunicacao] = useState("")
+
+  // Modal de solicitar agendamento (pós-cadastro ou para paciente já cadastrado)
+  const [novoAgOpen, setNovoAgOpen] = useState(false)
+  const [agPacienteId, setAgPacienteId] = useState<string>("")
+  const [agMedicoId, setAgMedicoId] = useState<string>("")
+  const [agEspecialidadeId, setAgEspecialidadeId] = useState<string>("")
+  const [agData, setAgData] = useState("")
+  const [agHora, setAgHora] = useState("")
+  const [agObs, setAgObs] = useState("")
+  // Estado pós-criação: mostra resumo + botão "Confirmar agora"
+  const [agEmSucesso, setAgEmSucesso] = useState(false)
+  const [agCriado, setAgCriado] = useState<Agendamento | null>(null)
+  const [agEnviando, setAgEnviando] = useState(false)
 
   useEffect(() => {
     if (!usuarioLogado || usuarioLogado.tipo_usuario !== "recepcionista") {
@@ -156,6 +185,21 @@ export default function RecepcionistaPage() {
     setRemarcarOpen(true)
   }
 
+  function resetCadastroPresencial() {
+    setPacNome("")
+    setPacEmail("")
+    setPacTel("")
+    setPacSenha("")
+    setPacPrecisaResp(false)
+    setPacDataNascimento("")
+    setPacSexo("")
+    setPacPossuiAutismo(false)
+    setPacNecessitaAcessibilidade(false)
+    setPacUsaCadeiraRodas(false)
+    setPacObservacoes("")
+    setPacObservacoesComunicacao("")
+  }
+
   async function handleCadastrarPacientePresencial(e: React.FormEvent) {
     e.preventDefault()
     if (!pacNome || !pacEmail || !pacSenha) {
@@ -166,6 +210,14 @@ export default function RecepcionistaPage() {
       toast.error("A senha deve ter ao menos 6 caracteres.")
       return
     }
+    if (!pacDataNascimento) {
+      toast.error("Informe a data de nascimento do paciente.")
+      return
+    }
+    if (!pacSexo) {
+      toast.error("Informe o sexo do paciente.")
+      return
+    }
     try {
       await cadastrar({
         nome: pacNome,
@@ -173,22 +225,105 @@ export default function RecepcionistaPage() {
         telefone: pacTel,
         senha: pacSenha,
         tipo_usuario: "paciente",
-        precisa_responsavel: pacPrecisaResp,
+        data_nascimento: pacDataNascimento,
+        sexo: pacSexo,
+        possui_autismo: pacPossuiAutismo,
+        necessita_acessibilidade: pacNecessitaAcessibilidade,
+        usa_cadeira_rodas: pacUsaCadeiraRodas,
+        necessita_acompanhante: pacPrecisaResp,
+        observacoes: pacObservacoes || undefined,
+        observacoes_comunicacao: pacObservacoesComunicacao || undefined,
       })
       toast.success("Paciente cadastrado(a) com sucesso.", {
         description: pacPrecisaResp
           ? "Lembre de vincular o responsável depois."
           : "A conta já pode ser usada para agendamentos.",
       })
-      setPacNome("")
-      setPacEmail("")
-      setPacTel("")
-      setPacSenha("")
-      setPacPrecisaResp(false)
+      resetCadastroPresencial()
       setNovoPacOpen(false)
     } catch (err) {
       const msg =
         err instanceof ApiError ? err.message : "Erro ao cadastrar paciente."
+      toast.error(msg)
+    }
+  }
+
+  function resetNovoAg() {
+    setAgPacienteId("")
+    setAgMedicoId("")
+    setAgEspecialidadeId("")
+    setAgData("")
+    setAgHora("")
+    setAgObs("")
+    setAgEmSucesso(false)
+    setAgCriado(null)
+    setAgEnviando(false)
+  }
+
+  function abrirSolicitarAgendamento() {
+    resetNovoAg()
+    setNovoAgOpen(true)
+  }
+
+  function fecharSolicitarAgendamento() {
+    setNovoAgOpen(false)
+    resetNovoAg()
+  }
+
+  async function handleSolicitarAgendamento(e: React.FormEvent) {
+    e.preventDefault()
+    if (!agPacienteId) {
+      toast.error("Selecione o paciente.")
+      return
+    }
+    if (!agMedicoId || !agEspecialidadeId) {
+      toast.error("Selecione médico e especialidade.")
+      return
+    }
+    if (!agData || !agHora) {
+      toast.error("Informe data e horário.")
+      return
+    }
+    setAgEnviando(true)
+    try {
+      const novo = await criarAgendamento({
+        paciente_id: Number(agPacienteId),
+        medico_id: Number(agMedicoId),
+        especialidade_id: Number(agEspecialidadeId),
+        recepcionista_id: usuarioLogado?.id ?? null,
+        data_agendamento: agData,
+        horario: agHora,
+        observacoes: agObs || null,
+      })
+      setAgCriado(novo)
+      setAgEmSucesso(true)
+      toast.success("Agendamento criado", {
+        description: "Você pode confirmar agora ou fechar para confirmar depois.",
+      })
+    } catch (err) {
+      const msg =
+        err instanceof ApiError
+          ? err.message
+          : "Não foi possível criar o agendamento."
+      toast.error(msg)
+    } finally {
+      setAgEnviando(false)
+    }
+  }
+
+  async function handleConfirmarAgendamentoCriado() {
+    if (!agCriado) return
+    try {
+      await alterarStatusAgendamento(agCriado.id, "confirmado")
+      toast.success("Consulta confirmada", {
+        description: `${getPaciente(agCriado.paciente_id)?.nome ?? "Paciente"} • ${formatarData(agCriado.data_agendamento)} às ${formatarHora(agCriado.horario)}`,
+      })
+      fecharSolicitarAgendamento()
+    } catch (err) {
+      const msg =
+        err instanceof ApiError
+          ? err.message
+          : "Não foi possível confirmar a consulta."
       toast.error(msg)
     }
   }
@@ -218,6 +353,21 @@ export default function RecepcionistaPage() {
       setRemarcarOpen(false)
     } catch (err) {
       const msg = err instanceof ApiError ? err.message : "Erro ao remarcar."
+      toast.error(msg)
+    }
+  }
+
+  async function marcarFaltou(a: Agendamento) {
+    try {
+      await alterarStatusAgendamento(a.id, "faltou")
+      toast.success("Falta registrada", {
+        description: `${getPaciente(a.paciente_id)?.nome ?? "Paciente"} • ${formatarData(a.data_agendamento)} às ${formatarHora(a.horario)}`,
+      })
+    } catch (err) {
+      const msg =
+        err instanceof ApiError
+          ? err.message
+          : "Não foi possível registrar a falta."
       toast.error(msg)
     }
   }
@@ -257,7 +407,7 @@ export default function RecepcionistaPage() {
             {
               label: "Confirmados",
               valor: stats.confirmados,
-              Icon: Users,
+              Icon: CheckCircle2,
               cor: "primary",
             },
             {
@@ -305,16 +455,26 @@ export default function RecepcionistaPage() {
               Paciente chegou sem cadastro?
             </h2>
             <p className="text-sm text-muted-foreground mt-1">
-              Crie a conta agora para liberar o agendamento.
+              Crie a conta agora ou agende diretamente para um paciente já cadastrado.
             </p>
           </div>
-          <Button
-            onClick={() => setNovoPacOpen(true)}
-            className="bg-accent hover:bg-accent/90 text-accent-foreground gap-2 self-start sm:self-auto"
-          >
-            <UserPlus size={16} aria-hidden="true" />
-            Cadastrar paciente
-          </Button>
+          <div className="flex flex-wrap gap-2 self-start sm:self-auto">
+            <Button
+              onClick={() => setNovoPacOpen(true)}
+              variant="outline"
+              className="bg-accent hover:bg-accent/90 text-accent-foreground gap-2"
+            >
+              <UserPlus size={16} aria-hidden="true" />
+              Cadastrar paciente
+            </Button>
+            <Button
+              onClick={abrirSolicitarAgendamento}
+              className="bg-accent hover:bg-accent/90 text-accent-foreground gap-2"
+            >
+              <CalendarPlus size={16} aria-hidden="true" />
+              Solicitar agendamento
+            </Button>
+          </div>
         </section>
 
         {/* Filtros */}
@@ -473,35 +633,79 @@ export default function RecepcionistaPage() {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2 flex-wrap">
-                          {(a.status === "agendado" ||
-                            a.status === "confirmado") && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => abrirRemarcar(a)}
-                              className="gap-1.5 border-2"
-                            >
-                              <CalendarClock size={14} aria-hidden="true" />
-                              Remarcar
-                            </Button>
-                          )}
                           {a.status === "agendado" && (
                             <Button
                               size="sm"
-                              variant="outline"
                               onClick={async () => {
                                 try {
-                                  await cancelarAgendamento(a.id)
-                                  toast.success("Consulta cancelada.")
-                                } catch {
-                                  toast.error("Erro ao cancelar.")
+                                  await alterarStatusAgendamento(
+                                    a.id,
+                                    "confirmado",
+                                  )
+                                  toast.success("Consulta confirmada", {
+                                    description: `${paciente?.nome ?? "Paciente"} • ${formatarData(a.data_agendamento)} às ${formatarHora(a.horario)}`,
+                                  })
+                                } catch (err) {
+                                  toast.error(
+                                    err instanceof ApiError
+                                      ? err.message
+                                      : "Erro ao confirmar.",
+                                  )
                                 }
                               }}
-                              className="gap-1.5 text-destructive border-destructive/40 hover:bg-destructive/10 hover:text-destructive"
+                              className="gap-1.5 border-2 bg-primary text-primary-foreground hover:bg-primary/90"
                             >
-                              <X size={14} aria-hidden="true" />
-                              Cancelar
+                              <CheckCircle2
+                                size={14}
+                                aria-hidden="true"
+                              />
+                              Confirmar
                             </Button>
+                          )}
+                          {(a.status === "agendado" ||
+                            a.status === "confirmado") && (
+                            <>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => abrirRemarcar(a)}
+                                className="gap-1.5 border-2"
+                              >
+                                <CalendarClock
+                                  size={14}
+                                  aria-hidden="true"
+                                />
+                                Remarcar
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => marcarFaltou(a)}
+                                className="gap-1.5 border-2 border-amber-500/40 text-amber-700 hover:bg-amber-500/10 hover:text-amber-700"
+                              >
+                                <AlertCircle
+                                  size={14}
+                                  aria-hidden="true"
+                                />
+                                Não compareceu
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={async () => {
+                                  try {
+                                    await cancelarAgendamento(a.id)
+                                    toast.success("Consulta cancelada.")
+                                  } catch {
+                                    toast.error("Erro ao cancelar.")
+                                  }
+                                }}
+                                className="gap-1.5 text-destructive border-destructive/40 hover:bg-destructive/10 hover:text-destructive"
+                              >
+                                <X size={14} aria-hidden="true" />
+                                Cancelar
+                              </Button>
+                            </>
                           )}
                         </div>
                       </TableCell>
@@ -658,8 +862,9 @@ export default function RecepcionistaPage() {
               Cadastrar paciente presencial
             </DialogTitle>
             <DialogDescription>
-              Cria conta com <code>tipo_usuario = paciente</code>. Marque
-              "precisa de responsável" se for criança/adolescente PCD.
+              Cria conta com <code>tipo_usuario = paciente</code> e já vincula
+              os dados PCD necessários. Marque "precisa de responsável" se for
+              criança/adolescente PCD.
             </DialogDescription>
           </DialogHeader>
 
@@ -721,6 +926,114 @@ export default function RecepcionistaPage() {
               </p>
             </div>
 
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label
+                  htmlFor="p-nascimento"
+                  className="text-sm font-semibold"
+                >
+                  Data de nascimento
+                </Label>
+                <Input
+                  id="p-nascimento"
+                  type="date"
+                  value={pacDataNascimento}
+                  onChange={(e) => setPacDataNascimento(e.target.value)}
+                  max={new Date().toISOString().split("T")[0]}
+                  className="h-11"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="p-sexo" className="text-sm font-semibold">
+                  Sexo
+                </Label>
+                <Select value={pacSexo} onValueChange={setPacSexo}>
+                  <SelectTrigger id="p-sexo" className="h-11">
+                    <SelectValue placeholder="Selecione" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Feminino">Feminino</SelectItem>
+                    <SelectItem value="Masculino">Masculino</SelectItem>
+                    <SelectItem value="Outro">Outro</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="rounded-xl border-2 border-border bg-secondary/30 p-3 space-y-2">
+              <p className="text-xs uppercase tracking-widest text-muted-foreground font-bold">
+                Marcadores PCD
+              </p>
+              <label
+                htmlFor="p-autismo"
+                className="flex items-start gap-3 cursor-pointer rounded-lg hover:bg-card/60 p-2 transition-colors"
+              >
+                <input
+                  id="p-autismo"
+                  type="checkbox"
+                  checked={pacPossuiAutismo}
+                  onChange={(e) => setPacPossuiAutismo(e.target.checked)}
+                  className="mt-1 h-4 w-4 rounded border-2 border-border accent-primary"
+                />
+                <span className="text-sm font-medium">Possui autismo (TEA)</span>
+              </label>
+              <label
+                htmlFor="p-acess"
+                className="flex items-start gap-3 cursor-pointer rounded-lg hover:bg-card/60 p-2 transition-colors"
+              >
+                <input
+                  id="p-acess"
+                  type="checkbox"
+                  checked={pacNecessitaAcessibilidade}
+                  onChange={(e) =>
+                    setPacNecessitaAcessibilidade(e.target.checked)
+                  }
+                  className="mt-1 h-4 w-4 rounded border-2 border-border accent-primary"
+                />
+                <span className="text-sm font-medium">
+                  Necessita acessibilidade
+                </span>
+              </label>
+              <label
+                htmlFor="p-cadeira"
+                className="flex items-start gap-3 cursor-pointer rounded-lg hover:bg-card/60 p-2 transition-colors"
+              >
+                <input
+                  id="p-cadeira"
+                  type="checkbox"
+                  checked={pacUsaCadeiraRodas}
+                  onChange={(e) => setPacUsaCadeiraRodas(e.target.checked)}
+                  className="mt-1 h-4 w-4 rounded border-2 border-border accent-primary"
+                />
+                <span className="text-sm font-medium">Usa cadeira de rodas</span>
+              </label>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="p-obs" className="text-sm font-semibold">
+                Observações gerais
+              </Label>
+              <Textarea
+                id="p-obs"
+                value={pacObservacoes}
+                onChange={(e) => setPacObservacoes(e.target.value)}
+                placeholder="Anotações clínicas ou contextuais relevantes"
+                rows={2}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="p-obs-com" className="text-sm font-semibold">
+                Observações de comunicação
+              </Label>
+              <Textarea
+                id="p-obs-com"
+                value={pacObservacoesComunicacao}
+                onChange={(e) => setPacObservacoesComunicacao(e.target.value)}
+                placeholder="Como o paciente se comunica, sensibilidades, etc."
+                rows={2}
+              />
+            </div>
+
             <label
               htmlFor="p-precisa-resp"
               className="flex items-start gap-3 cursor-pointer rounded-xl border-2 border-border bg-card p-3 has-[input:checked]:border-primary has-[input:checked]:bg-primary/5 transition-colors"
@@ -738,7 +1051,7 @@ export default function RecepcionistaPage() {
                 </span>
                 <span className="text-muted-foreground">
                   Marque para crianças/adolescentes PCD. O vínculo pode ser
-                  feito em seguida.
+                  feito em seguida pelo próprio paciente.
                 </span>
               </span>
             </label>
@@ -759,6 +1072,255 @@ export default function RecepcionistaPage() {
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal: solicitar agendamento (recepção cria agendamento para o paciente) */}
+      <Dialog
+        open={novoAgOpen}
+        onOpenChange={(open) => {
+          if (!open) fecharSolicitarAgendamento()
+          else setNovoAgOpen(true)
+        }}
+      >
+        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+          {!agEmSucesso ? (
+            <>
+              <DialogHeader>
+                <DialogTitle className="font-display text-2xl">
+                  Solicitar agendamento
+                </DialogTitle>
+                <DialogDescription>
+                  Crie um agendamento para um paciente já cadastrado. Após
+                  criar, você pode confirmar a consulta na hora.
+                </DialogDescription>
+              </DialogHeader>
+
+              <form
+                onSubmit={handleSolicitarAgendamento}
+                className="space-y-4"
+              >
+                <div className="space-y-2">
+                  <Label
+                    htmlFor="ag-paciente"
+                    className="text-sm font-semibold"
+                  >
+                    Paciente
+                  </Label>
+                  <Select
+                    value={agPacienteId}
+                    onValueChange={setAgPacienteId}
+                  >
+                    <SelectTrigger id="ag-paciente" className="h-11">
+                      <SelectValue placeholder="Selecione o paciente" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {pacientes.length === 0 && (
+                        <SelectItem value="__vazio" disabled>
+                          Nenhum paciente cadastrado
+                        </SelectItem>
+                      )}
+                      {pacientes.map((p) => (
+                        <SelectItem key={p.id} value={String(p.id)}>
+                          {p.nome}
+                          {p.possui_autismo ? " • TEA" : ""}
+                          {p.usa_cadeira_rodas ? " • Cadeira de rodas" : ""}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-2">
+                    <Label
+                      htmlFor="ag-medico"
+                      className="text-sm font-semibold"
+                    >
+                      Médico
+                    </Label>
+                    <Select value={agMedicoId} onValueChange={setAgMedicoId}>
+                      <SelectTrigger id="ag-medico" className="h-11">
+                        <SelectValue placeholder="Selecione" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {medicos.map((m) => {
+                          const nome = getMedicoNome(m.id) || `Médico #${m.id}`
+                          return (
+                            <SelectItem key={m.id} value={String(m.id)}>
+                              {nome} · {m.crm}
+                            </SelectItem>
+                          )
+                        })}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label
+                      htmlFor="ag-esp"
+                      className="text-sm font-semibold"
+                    >
+                      Especialidade
+                    </Label>
+                    <Select
+                      value={agEspecialidadeId}
+                      onValueChange={setAgEspecialidadeId}
+                    >
+                      <SelectTrigger id="ag-esp" className="h-11">
+                        <SelectValue placeholder="Selecione" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {especialidades.map((e) => (
+                          <SelectItem key={e.id} value={String(e.id)}>
+                            {e.nome}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-2">
+                    <Label
+                      htmlFor="ag-data"
+                      className="text-sm font-semibold"
+                    >
+                      Data
+                    </Label>
+                    <Input
+                      id="ag-data"
+                      type="date"
+                      value={agData}
+                      onChange={(e) => setAgData(e.target.value)}
+                      min={new Date().toISOString().split("T")[0]}
+                      className="h-11"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label
+                      htmlFor="ag-hora"
+                      className="text-sm font-semibold"
+                    >
+                      Horário
+                    </Label>
+                    <Input
+                      id="ag-hora"
+                      type="time"
+                      value={agHora}
+                      onChange={(e) => setAgHora(e.target.value)}
+                      className="h-11"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="ag-obs" className="text-sm font-semibold">
+                    Observações
+                  </Label>
+                  <Textarea
+                    id="ag-obs"
+                    value={agObs}
+                    onChange={(e) => setAgObs(e.target.value)}
+                    placeholder="Anotações relevantes (opcional)"
+                    rows={2}
+                  />
+                </div>
+
+                <DialogFooter className="gap-2 sm:gap-0">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={fecharSolicitarAgendamento}
+                  >
+                    Cancelar
+                  </Button>
+                  <Button
+                    type="submit"
+                    disabled={agEnviando}
+                    className="bg-accent hover:bg-accent/90 text-accent-foreground"
+                  >
+                    {agEnviando ? "Criando..." : "Solicitar agendamento"}
+                  </Button>
+                </DialogFooter>
+              </form>
+            </>
+          ) : (
+            <>
+              <DialogHeader>
+                <DialogTitle className="font-display text-2xl flex items-center gap-2">
+                  <CheckCircle2
+                    size={22}
+                    className="text-primary"
+                    aria-hidden="true"
+                  />
+                  Agendamento criado
+                </DialogTitle>
+                <DialogDescription>
+                  A consulta foi registrada como "agendada". Você pode
+                  confirmar agora para o paciente.
+                </DialogDescription>
+              </DialogHeader>
+
+              {agCriado && (
+                <div className="rounded-xl border-2 border-primary/30 bg-primary/5 p-4 space-y-2">
+                  <p className="text-xs uppercase tracking-widest text-primary font-bold">
+                    Resumo
+                  </p>
+                  <dl className="grid grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <dt className="text-muted-foreground">Paciente</dt>
+                      <dd className="font-semibold">
+                        {getPaciente(agCriado.paciente_id)?.nome ?? "—"}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-muted-foreground">Médico</dt>
+                      <dd className="font-semibold">
+                        {getMedicoNome(agCriado.medico_id) || "—"}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-muted-foreground">Data</dt>
+                      <dd className="font-semibold">
+                        {formatarData(agCriado.data_agendamento)}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-muted-foreground">Horário</dt>
+                      <dd className="font-semibold">
+                        {formatarHora(agCriado.horario)}
+                      </dd>
+                    </div>
+                    <div className="col-span-2">
+                      <dt className="text-muted-foreground">Especialidade</dt>
+                      <dd className="font-semibold">
+                        {getEspecialidadeNome(agCriado.especialidade_id)}
+                      </dd>
+                    </div>
+                  </dl>
+                </div>
+              )}
+
+              <DialogFooter className="gap-2 sm:gap-0">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={fecharSolicitarAgendamento}
+                >
+                  Fechar
+                </Button>
+                <Button
+                  type="button"
+                  onClick={handleConfirmarAgendamentoCriado}
+                  className="bg-primary hover:bg-primary/90 text-primary-foreground gap-2"
+                >
+                  <CheckCircle2 size={16} aria-hidden="true" />
+                  Confirmar agora
+                </Button>
+              </DialogFooter>
+            </>
+          )}
         </DialogContent>
       </Dialog>
     </div>

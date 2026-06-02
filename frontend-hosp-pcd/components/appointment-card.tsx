@@ -3,7 +3,16 @@
 import type { Agendamento } from "@/lib/types"
 import { useHospital } from "@/lib/store"
 import { StatusBadge } from "./status-badge"
-import { Calendar, Clock, Stethoscope, MapPin, Baby } from "lucide-react"
+import {
+  Calendar,
+  Clock,
+  Stethoscope,
+  MapPin,
+  Baby,
+  CheckCircle2,
+  BellRing,
+} from "lucide-react"
+import { useEffect, useState } from "react"
 
 const diasSemana = [
   "domingo",
@@ -29,6 +38,19 @@ const meses = [
   "novembro",
   "dezembro",
 ]
+
+/** Formata há quanto tempo o paciente foi chamado. */
+function tempoChamado(updatedAt: string | undefined, now = Date.now()) {
+  if (!updatedAt) return ""
+  const t = new Date(updatedAt).getTime()
+  if (Number.isNaN(t)) return ""
+  const diffMs = now - t
+  if (diffMs < 30_000) return "agora"
+  const min = Math.floor(diffMs / 60_000)
+  if (min < 60) return `há ${min} min`
+  const h = Math.floor(min / 60)
+  return `há ${h}h`
+}
 
 /**
  * Combina `data_agendamento` (YYYY-MM-DD) e `horario` (HH:mm[:ss])
@@ -81,10 +103,31 @@ export function AppointmentCard({
     paciente?.deficiencias?.[0]?.tipo_deficiencia?.nome ??
     (paciente?.possui_autismo ? "TEA (Autismo)" : "—")
 
+  const ehChamado = agendamento.status === "chamado"
+  const ehAgendado = agendamento.status === "agendado"
+
+  // Re-renderiza o "há X min" a cada minuto quando o card está em
+  // estado `chamado`. Mantém local para não acoplar ao tick da página.
+  const [, setTick] = useState(0)
+  useEffect(() => {
+    if (!ehChamado) return
+    const id = setInterval(() => setTick((t) => t + 1), 60_000)
+    return () => clearInterval(id)
+  }, [ehChamado])
+  const tempo = ehChamado ? tempoChamado(agendamento.updated_at) : ""
+
   return (
     <article
       className={`rounded-2xl border-2 p-5 sm:p-6 transition-all hover:shadow-md ${
-        destaque ? "border-primary/40 bg-primary/5" : "border-border bg-card"
+        agendamento.status === "confirmado"
+          ? "border-primary bg-primary/5"
+          : ehChamado
+            ? "border-amber-500 bg-amber-50"
+            : ehAgendado
+              ? "border-dashed border-muted-foreground/40 bg-muted/30 opacity-80"
+              : destaque
+                ? "border-primary/40 bg-primary/5"
+                : "border-border bg-card"
       }`}
     >
       <div className="flex flex-col sm:flex-row gap-5">
@@ -118,8 +161,35 @@ export function AppointmentCard({
                 {medicoNome || "—"}
               </h3>
             </div>
-            <StatusBadge status={agendamento.status} />
+            <div className="flex items-center gap-2">
+              {ehChamado && (
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/15 text-amber-800 px-2.5 py-1 text-xs font-bold uppercase tracking-widest">
+                  <BellRing size={12} aria-hidden="true" />
+                  {tempo}
+                </span>
+              )}
+              <StatusBadge status={agendamento.status} />
+            </div>
           </div>
+
+          {agendamento.status === "confirmado" && (
+            <p className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-primary">
+              <CheckCircle2 size={14} aria-hidden="true" />
+              Confirmada pela recepção
+            </p>
+          )}
+          {ehChamado && (
+            <p className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-amber-800">
+              <BellRing size={14} aria-hidden="true" />
+              Aguardando chegada para iniciar
+            </p>
+          )}
+          {ehAgendado && (
+            <p className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
+              <Clock size={14} aria-hidden="true" />
+              Aguardando confirmação da recepção
+            </p>
+          )}
 
           <dl className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-4">
             <div>

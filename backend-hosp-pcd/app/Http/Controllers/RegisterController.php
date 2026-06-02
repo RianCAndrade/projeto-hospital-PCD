@@ -22,6 +22,9 @@ class RegisterController
             $tipo = $request->input('tipo_usuario', TiposUsuario::Paciente->value);
             $ehPaciente = $tipo === TiposUsuario::Paciente->value;
 
+            $necessitaAcompanhante = $request->boolean('necessita_acompanhante');
+            $regraResponsavelObrigatorio = $ehPaciente && $necessitaAcompanhante ? 'required' : 'nullable';
+
             $regras = [
                 'nome' => 'required|string',
                 'cpf' => ($ehPaciente ? 'required' : 'nullable').'|string|unique:tbusuarios,cpf',
@@ -40,9 +43,15 @@ class RegisterController
                 'observacoes' => 'nullable|string',
                 'observacoes_comunicacao' => 'nullable|string',
 
-                // Reservado para o frontend marcar "vou vincular responsável depois".
-                // Não é gravado em nenhuma tabela — apenas trafega.
-                'precisa_responsavel' => 'nullable|boolean',
+                // Dados do responsável (criados inline quando o paciente
+                // declara que necessita de acompanhante no autocadastro)
+                'responsavel_nome' => $regraResponsavelObrigatorio.'|string|max:255',
+                'responsavel_cpf' => 'nullable|string|max:20|unique:tbusuarios,cpf',
+                'responsavel_email' => $regraResponsavelObrigatorio.'|string|email|max:255|unique:tbusuarios,email',
+                'responsavel_telefone' => 'nullable|string|max:255',
+                'responsavel_senha' => $regraResponsavelObrigatorio.'|string|min:6',
+                'responsavel_parentesco' => $regraResponsavelObrigatorio.'|string|max:255',
+                'responsavel_principal' => 'nullable|boolean',
             ];
 
             $validated = $request->validate($regras);

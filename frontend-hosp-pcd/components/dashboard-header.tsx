@@ -38,7 +38,7 @@ export function DashboardHeader({ titulo, descricao, perfilLabel }: Props) {
             <span className="grid h-9 w-9 place-items-center rounded-lg bg-primary text-primary-foreground">
               <Heart size={18} aria-hidden="true" fill="currentColor" />
             </span>
-            <span className="hidden sm:inline">Acolher</span>
+            <span className="hidden sm:inline">Portal CIIR</span>
           </Link>
 
           <div className="flex items-center gap-3">

@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useHospital } from "@/lib/store"
 import { DashboardHeader } from "@/components/dashboard-header"
@@ -43,10 +43,35 @@ import {
 } from "lucide-react"
 import { toast } from "sonner"
 import { ApiError } from "@/lib/api"
+import type { StatusAgendamento } from "@/lib/types"
 
 function montarDate(data: string, horario: string) {
   const h = horario.length === 5 ? `${horario}:00` : horario
   return new Date(`${data}T${h}`)
+}
+
+const mesesCurtos = [
+  "jan",
+  "fev",
+  "mar",
+  "abr",
+  "mai",
+  "jun",
+  "jul",
+  "ago",
+  "set",
+  "out",
+  "nov",
+  "dez",
+]
+
+function formatarDataCurta(data: string) {
+  const [, m, d] = data.split("-")
+  return `${d}/${m}`
+}
+
+function formatarHoraCurta(horario: string) {
+  return horario.slice(0, 5)
 }
 
 export default function PacientePage() {
@@ -64,6 +89,8 @@ export default function PacientePage() {
     vincularResponsavel,
     removerResponsavel,
     getUsuario,
+    getMedicoNome,
+    carregarBootstrap,
   } = useHospital()
 
   const [novoOpen, setNovoOpen] = useState(false)
@@ -98,10 +125,95 @@ export default function PacientePage() {
     [usuarioLogado, pacientesDoUsuario],
   )
 
+  /**
+   * Quando o usuário logado é o próprio paciente (`tipo_usuario === "paciente"`),
+   * achamos a linha em `tbpacientes` cuja `usuario_id` aponta para ele.
+   * É a partir desse paciente que listamos / vinculamos responsáveis.
+   */
+  const meuPacienteSelf = useMemo(() => {
+    if (!usuarioLogado || usuarioLogado.tipo_usuario !== "paciente") {
+      return null
+    }
+    return pacientes.find((p) => p.usuario_id === usuarioLogado.id) ?? null
+  }, [pacientes, usuarioLogado])
+
   const meusAgendamentos = useMemo(() => {
-    const ids = meusPacientes.map((p) => p.id)
-    return agendamentos.filter((a) => ids.includes(a.paciente_id))
-  }, [agendamentos, meusPacientes])
+    // IDs cobertos: (1) pacientes dos quais o usuário logado é responsável
+    // e (2) o próprio paciente quando o usuário logado é um paciente
+    // autônomo (criado com `pacientes.usuario_id = usuarioLogado.id`).
+    // Sem o item (2), um paciente que agenda para si mesmo nunca veria
+    // seus próprios agendamentos.
+    const ids = new Set<number>(meusPacientes.map((p) => p.id))
+    if (meuPacienteSelf) ids.add(meuPacienteSelf.id)
+    return agendamentos.filter((a) => ids.has(a.paciente_id))
+  }, [agendamentos, meusPacientes, meuPacienteSelf])
+
+  // Polling do bootstrap a cada 30s para detectar mudanças vindas de
+  // outros dispositivos (ex.: recepção confirma um agendamento).
+  useEffect(() => {
+    if (!usuarioLogado) return
+    const interval = setInterval(() => {
+      void carregarBootstrap()
+    }, 30_000)
+    return () => clearInterval(interval)
+  }, [usuarioLogado, carregarBootstrap])
+
+  // Sincronia quase instantânea entre abas: quando OUTRA aba grava no
+  // mock (ex.: recepção confirma um agendamento), o `mock.ts` dispara
+  // `acolher:mock-updated` após re-hidratar. Re-baixamos o bootstrap
+  // imediatamente para o detector de status disparar o toast.
+  useEffect(() => {
+    if (!usuarioLogado || typeof window === "undefined") return
+    const handler = () => {
+      void carregarBootstrap()
+    }
+    window.addEventListener("acolher:mock-updated", handler)
+    return () => window.removeEventListener("acolher:mock-updated", handler)
+  }, [usuarioLogado, carregarBootstrap])
+
+  // Refresh imediato ao voltar para a aba (cobre o caso de o evento
+  // `storage` não ter disparado por algum motivo, ex.: mesma aba).
+  useEffect(() => {
+    if (!usuarioLogado || typeof window === "undefined") return
+    const onFocus = () => {
+      void carregarBootstrap()
+    }
+    window.addEventListener("focus", onFocus)
+    return () => window.removeEventListener("focus", onFocus)
+  }, [usuarioLogado, carregarBootstrap])
+
+  // Detector de transições de status: emite um toast sempre que um
+  // agendamento do usuário sai de "agendado" e vira "confirmado".
+  const statusAnteriorRef = useRef<Map<number, StatusAgendamento>>(new Map())
+  const inicializadoRef = useRef(false)
+
+  useEffect(() => {
+    if (!usuarioLogado) return
+    if (!inicializadoRef.current) {
+      // Primeira renderização: popula o ref sem disparar toasts
+      statusAnteriorRef.current = new Map(
+        meusAgendamentos.map((a) => [a.id, a.status]),
+      )
+      inicializadoRef.current = true
+      return
+    }
+    const confirmadosAgora: typeof meusAgendamentos = []
+    const novoMapa = new Map<number, StatusAgendamento>()
+    for (const a of meusAgendamentos) {
+      novoMapa.set(a.id, a.status)
+      const anterior = statusAnteriorRef.current.get(a.id)
+      if (anterior === "agendado" && a.status === "confirmado") {
+        confirmadosAgora.push(a)
+      }
+    }
+    statusAnteriorRef.current = novoMapa
+
+    for (const a of confirmadosAgora) {
+      toast.success("Sua consulta foi confirmada!", {
+        description: `${formatarDataCurta(a.data_agendamento)} às ${formatarHoraCurta(a.horario)} • ${getMedicoNome(a.medico_id) || "médico"}`,
+      })
+    }
+  }, [meusAgendamentos, usuarioLogado, getMedicoNome])
 
   const proximas = useMemo(
     () =>
@@ -132,22 +244,40 @@ export default function PacientePage() {
     [meusAgendamentos],
   )
 
-  /**
-   * Quando o usuário logado é o próprio paciente (`tipo_usuario === "paciente"`),
-   * achamos a linha em `tbpacientes` cuja `usuario_id` aponta para ele.
-   * É a partir desse paciente que listamos / vinculamos responsáveis.
-   */
-  const meuPacienteSelf = useMemo(() => {
-    if (!usuarioLogado || usuarioLogado.tipo_usuario !== "paciente") {
-      return null
-    }
-    return pacientes.find((p) => p.usuario_id === usuarioLogado.id) ?? null
-  }, [pacientes, usuarioLogado])
-
   const meusResponsaveis = useMemo(() => {
     if (!meuPacienteSelf) return []
     return responsaveis.filter((r) => r.paciente_id === meuPacienteSelf.id)
   }, [responsaveis, meuPacienteSelf])
+
+  /**
+   * Médicos filtrados pela especialidade selecionada no modal de
+   * agendamento. Quando nenhuma especialidade está marcada, retorna
+   * a lista completa para que o select exiba todos os especialistas
+   * disponíveis como fallback.
+   */
+  const medicosFiltrados = useMemo(() => {
+    if (!especialidadeId) return medicos
+    return medicos.filter((m) =>
+      m.especialidades?.some((e) => String(e.id) === especialidadeId),
+    )
+  }, [medicos, especialidadeId])
+
+  /**
+   * Sempre que o modal de agendamento abre, definimos um `pacienteId`
+   * implícito: se o usuário é um paciente autônomo (não é responsável
+   * por ninguém), usamos o próprio registro de paciente dele. Quando ele
+   * é responsável de um ou mais pacientes, a select fica visível e a
+   * escolha começa vazia para forçar a seleção.
+   */
+  useEffect(() => {
+    if (!novoOpen) {
+      setPacienteId("")
+      return
+    }
+    if (meusPacientes.length === 0 && meuPacienteSelf) {
+      setPacienteId(String(meuPacienteSelf.id))
+    }
+  }, [novoOpen, meusPacientes, meuPacienteSelf])
 
   if (!usuarioLogado) return null
 
@@ -157,7 +287,24 @@ export default function PacientePage() {
 
   async function handleAgendar(e: React.FormEvent) {
     e.preventDefault()
-    if (!pacienteSelecionado) {
+
+    // Resolve o pacienteId efetivo. Prioridade:
+    //   1. A select visível (quando há pacientes vinculados).
+    //   2. O `pacienteId` no state (auto-preenchido pelo useEffect para
+    //      pacientes autônomos a partir de `meuPacienteSelf`).
+    //   3. Fallback final em `meuPacienteSelf` se o state estiver vazio.
+    let pacienteIdEfetivo: number | null = null
+    if (pacienteSelecionado) {
+      pacienteIdEfetivo = pacienteSelecionado.id
+    } else if (pacienteId) {
+      const parsed = Number(pacienteId)
+      if (Number.isFinite(parsed) && parsed > 0) {
+        pacienteIdEfetivo = parsed
+      }
+    } else if (meusPacientes.length === 0 && meuPacienteSelf) {
+      pacienteIdEfetivo = meuPacienteSelf.id
+    }
+    if (!pacienteIdEfetivo) {
       toast.error("Selecione um paciente.")
       return
     }
@@ -172,7 +319,7 @@ export default function PacientePage() {
 
     try {
       await criarAgendamento({
-        paciente_id: pacienteSelecionado.id,
+        paciente_id: pacienteIdEfetivo,
         medico_id: Number(medicoId),
         especialidade_id: Number(especialidadeId),
         recepcionista_id: null,
@@ -557,29 +704,31 @@ export default function PacientePage() {
           </DialogHeader>
 
           <form onSubmit={handleAgendar} className="space-y-4 mt-2">
-            <div className="space-y-2">
-              <Label htmlFor="paciente" className="text-sm font-semibold">
-                Paciente
-              </Label>
-              <Select
-                value={pacienteId}
-                onValueChange={(v) => {
-                  setPacienteId(v)
-                  setMedicoId("")
-                }}
-              >
-                <SelectTrigger id="paciente" className="h-11">
-                  <SelectValue placeholder="Selecione um paciente" />
-                </SelectTrigger>
-                <SelectContent>
-                  {meusPacientes.map((p) => (
-                    <SelectItem key={p.id} value={String(p.id)}>
-                      {p.nome}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            {meusPacientes.length > 0 && (
+              <div className="space-y-2">
+                <Label htmlFor="paciente" className="text-sm font-semibold">
+                  Paciente
+                </Label>
+                <Select
+                  value={pacienteId}
+                  onValueChange={(v) => {
+                    setPacienteId(v)
+                    setMedicoId("")
+                  }}
+                >
+                  <SelectTrigger id="paciente" className="h-11">
+                    <SelectValue placeholder="Selecione um paciente" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {meusPacientes.map((p) => (
+                      <SelectItem key={p.id} value={String(p.id)}>
+                        {p.nome}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
             <div className="space-y-2">
               <Label htmlFor="esp" className="text-sm font-semibold">
@@ -617,30 +766,33 @@ export default function PacientePage() {
                 <SelectTrigger id="medico" className="h-11">
                   <SelectValue
                     placeholder={
-                      especialidadeId
-                        ? "Selecione um especialista"
-                        : "Selecione a especialidade primeiro"
+                      !especialidadeId
+                        ? "Selecione a especialidade primeiro"
+                        : medicosFiltrados.length > 0
+                          ? "Selecione um especialista"
+                          : medicos.length === 0
+                            ? "Nenhum médico cadastrado"
+                            : "Nenhum especialista para esta especialidade"
                     }
                   />
                 </SelectTrigger>
                 <SelectContent>
-                  {medicos
-                    .filter((m) =>
-                      m.especialidades?.some(
-                        (e) => String(e.id) === especialidadeId,
-                      ),
-                    )
-                    .map((m) => {
-                      const usuario =
-                        m.usuario ??
-                        // fallback: resolvido pelo getMedicoNome via store
-                        undefined
-                      return (
-                        <SelectItem key={m.id} value={String(m.id)}>
-                          {usuario?.nome ?? `Médico #${m.id}`} · CRM {m.crm}
-                        </SelectItem>
-                      )
-                    })}
+                  {medicos.length === 0 ? (
+                    <div className="px-3 py-2 text-sm text-muted-foreground">
+                      Nenhum médico cadastrado no momento.
+                    </div>
+                  ) : medicosFiltrados.length === 0 ? (
+                    <div className="px-3 py-2 text-sm text-muted-foreground">
+                      Nenhum especialista cadastrado para essa especialidade.
+                    </div>
+                  ) : (
+                    medicosFiltrados.map((m) => (
+                      <SelectItem key={m.id} value={String(m.id)}>
+                        {m.usuario?.nome ?? getMedicoNome(m.id) ?? `Médico #${m.id}`}{" "}
+                        · CRM {m.crm}
+                      </SelectItem>
+                    ))
+                  )}
                 </SelectContent>
               </Select>
             </div>
