@@ -26,6 +26,9 @@ import {
   Clock,
   Users,
   FileText,
+  CalendarDays,
+  AlertCircle,
+  X,
 } from "lucide-react"
 import { toast } from "sonner"
 import type { Agendamento } from "@/lib/types"
@@ -43,6 +46,48 @@ function formatarHora(data: string, horario: string) {
     .padStart(2, "0")}`
 }
 
+const DIAS_SEMANA = [
+  "Domingo",
+  "Segunda",
+  "Terça",
+  "Quarta",
+  "Quinta",
+  "Sexta",
+  "Sábado",
+]
+
+const MESES = [
+  "jan",
+  "fev",
+  "mar",
+  "abr",
+  "mai",
+  "jun",
+  "jul",
+  "ago",
+  "set",
+  "out",
+  "nov",
+  "dez",
+]
+
+/** Cabeçalho amigável para um YYYY-MM-DD: "Hoje", "Amanhã" ou "Sex, 05/12". */
+function rotuloData(data: string) {
+  const ag = montarDate(data, "00:00:00")
+  const hoje = new Date()
+  hoje.setHours(0, 0, 0, 0)
+  const diffDias = Math.round(
+    (ag.getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24),
+  )
+  if (diffDias === 0) return "Hoje"
+  if (diffDias === 1) return "Amanhã"
+  return `${DIAS_SEMANA[ag.getDay()]}, ${ag.getDate().toString().padStart(2, "0")}/${MESES[ag.getMonth()]}`
+}
+
+function toDateKey(data: string) {
+  return data.slice(0, 10)
+}
+
 export default function MedicoPage() {
   const router = useRouter()
   const {
@@ -52,6 +97,8 @@ export default function MedicoPage() {
     especialidades,
     getPaciente,
     alterarStatusAgendamento,
+    cancelarAgendamento,
+    carregarBootstrap,
   } = useHospital()
   const [encerrarOpen, setEncerrarOpen] = useState(false)
   const [agSelecionado, setAgSelecionado] = useState<Agendamento | null>(null)
@@ -62,6 +109,29 @@ export default function MedicoPage() {
       router.push("/login")
     }
   }, [usuarioLogado, router])
+
+  // Polling + listeners de storage/foco, idênticos ao painel do paciente,
+  // para detectar novos agendamentos confirmados pela recepção.
+  useEffect(() => {
+    if (!usuarioLogado) return
+    const interval = setInterval(() => {
+      void carregarBootstrap()
+    }, 30_000)
+    return () => clearInterval(interval)
+  }, [usuarioLogado, carregarBootstrap])
+
+  useEffect(() => {
+    if (!usuarioLogado || typeof window === "undefined") return
+    const handler = () => {
+      void carregarBootstrap()
+    }
+    window.addEventListener("acolher:mock-updated", handler)
+    window.addEventListener("focus", handler)
+    return () => {
+      window.removeEventListener("acolher:mock-updated", handler)
+      window.removeEventListener("focus", handler)
+    }
+  }, [usuarioLogado, carregarBootstrap])
 
   // Encontra o registro Medico (tbmedicos) pelo usuario_id do logado
   const meuMedico = useMemo(
@@ -79,10 +149,15 @@ export default function MedicoPage() {
     [agendamentos, meuMedico],
   )
 
-  const aguardando = useMemo(
+  /**
+   * "Em atendimento" — status distinto de "confirmado". Só entra aqui
+   * quando o médico clica em "Iniciar atendimento". `confirmado` significa
+   * apenas que a recepção confirmou que o paciente comparecerá naquele dia.
+   */
+  const emAtendimento = useMemo(
     () =>
       meusAgendamentos
-        .filter((a) => a.status === "agendado" || a.status === "confirmado")
+        .filter((a) => a.status === "em_atendimento")
         .sort(
           (a, b) =>
             montarDate(a.data_agendamento, a.horario).getTime() -
@@ -90,6 +165,89 @@ export default function MedicoPage() {
         ),
     [meusAgendamentos],
   )
+
+  /**
+   * Data de hoje (zerada em horas) para separar "hoje" de "próximos dias".
+   * Recriada a cada renderização — barato e suficiente para a lógica.
+   */
+  const hojeKey = useMemo(() => {
+    const d = new Date()
+    const y = d.getFullYear()
+    const m = (d.getMonth() + 1).toString().padStart(2, "0")
+    const dd = d.getDate().toString().padStart(2, "0")
+    return `${y}-${m}-${dd}`
+  }, [])
+
+  const limiteProximosKey = useMemo(() => {
+    const d = new Date()
+    d.setDate(d.getDate() + 30)
+    const y = d.getFullYear()
+    const m = (d.getMonth() + 1).toString().padStart(2, "0")
+    const dd = d.getDate().toString().padStart(2, "0")
+    return `${y}-${m}-${dd}`
+  }, [])
+
+  const isHoje = (data: string) => toDateKey(data) === hojeKey
+
+  const isProximo = (data: string) => {
+    const k = toDateKey(data)
+    return k > hojeKey && k <= limiteProximosKey
+  }
+
+  const filaHoje = useMemo(
+    () =>
+      meusAgendamentos
+        .filter(
+          (a) =>
+            (a.status === "agendado" || a.status === "confirmado") &&
+            isHoje(a.data_agendamento),
+        )
+        .sort(
+          (a, b) =>
+            montarDate(a.data_agendamento, a.horario).getTime() -
+            montarDate(b.data_agendamento, b.horario).getTime(),
+        ),
+    [meusAgendamentos, hojeKey],
+  )
+
+  /**
+   * Próximos dias (amanhã até +7 dias), agrupados por data para renderizar
+   * um cabeçalho por dia ("Amanhã", "Sex, 05/12", etc.).
+   */
+  const filaProximos = useMemo(() => {
+    const grupos: { data: string; itens: Agendamento[] }[] = []
+    for (const a of meusAgendamentos
+      .filter(
+        (a) =>
+          (a.status === "agendado" || a.status === "confirmado") &&
+          isProximo(a.data_agendamento),
+      )
+      .sort(
+        (a, b) =>
+          montarDate(a.data_agendamento, a.horario).getTime() -
+          montarDate(b.data_agendamento, b.horario).getTime(),
+      )) {
+      const k = toDateKey(a.data_agendamento)
+        const grupo = grupos.find((g) => g.data === k)
+        if (grupo) {
+          grupo.itens.push(a)
+        } else {
+          grupos.push({ data: k, itens: [a] })
+        }
+    }
+    return grupos
+  }, [meusAgendamentos, hojeKey, limiteProximosKey])
+
+  const totalAguardando = useMemo(
+    () =>
+      meusAgendamentos.filter(
+        (a) =>
+          (a.status === "agendado" || a.status === "confirmado") &&
+          (isHoje(a.data_agendamento) || isProximo(a.data_agendamento)),
+      ).length,
+    [meusAgendamentos, hojeKey, limiteProximosKey],
+  )
+
   const finalizados = useMemo(
     () =>
       meusAgendamentos
@@ -104,13 +262,37 @@ export default function MedicoPage() {
 
   async function iniciarAtendimento(a: Agendamento) {
     try {
-      await alterarStatusAgendamento(a.id, "confirmado")
+      await alterarStatusAgendamento(a.id, "em_atendimento")
       const pacienteNome = getPaciente(a.paciente_id)?.nome ?? "paciente"
       toast.success("Atendimento iniciado", {
         description: `Paciente ${pacienteNome} marcado como em atendimento.`,
       })
     } catch (err) {
       toast.error("Não foi possível iniciar o atendimento.")
+    }
+  }
+
+  async function marcarFaltou(a: Agendamento) {
+    try {
+      await alterarStatusAgendamento(a.id, "faltou")
+      const pacienteNome = getPaciente(a.paciente_id)?.nome ?? "paciente"
+      toast.success("Falta registrada", {
+        description: `${pacienteNome} marcado(a) como não compareceu.`,
+      })
+    } catch {
+      toast.error("Não foi possível registrar a falta.")
+    }
+  }
+
+  async function cancelar(a: Agendamento) {
+    try {
+      await cancelarAgendamento(a.id)
+      const pacienteNome = getPaciente(a.paciente_id)?.nome ?? "paciente"
+      toast.success("Consulta cancelada", {
+        description: `${pacienteNome} foi removido(a) da agenda.`,
+      })
+    } catch {
+      toast.error("Não foi possível cancelar a consulta.")
     }
   }
 
@@ -137,9 +319,10 @@ export default function MedicoPage() {
 
   if (!usuarioLogado) return null
 
-  // Considera o primeiro "agendado/confirmado" como destaque ("atendendo agora")
-  const atendendoAgora = aguardando.find((a) => a.status === "confirmado")
-  const proximo = aguardando.find((a) => a.status === "agendado")
+  // O primeiro (e idealmente único) atendimento em andamento vira destaque.
+  const atendendoAgora = emAtendimento[0] ?? null
+  // "Próximo" só faz sentido quando não há ninguém em atendimento:
+  const proximo = atendendoAgora ? null : filaHoje[0] ?? null
 
   return (
     <div className="min-h-screen bg-background">
@@ -165,7 +348,10 @@ export default function MedicoPage() {
               </span>
             </div>
             <p className="font-display text-4xl font-bold mt-3 text-accent">
-              {aguardando.filter((a) => a.status === "agendado").length}
+              {totalAguardando}
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              hoje + próximos 30 dias
             </p>
           </article>
           <article className="rounded-2xl border-2 border-primary/30 bg-primary/5 p-5">
@@ -178,7 +364,7 @@ export default function MedicoPage() {
               </span>
             </div>
             <p className="font-display text-4xl font-bold mt-3 text-primary">
-              {aguardando.filter((a) => a.status === "confirmado").length}
+              {emAtendimento.length}
             </p>
           </article>
           <article className="rounded-2xl border-2 border-border bg-card p-5">
@@ -208,10 +394,11 @@ export default function MedicoPage() {
             {(() => {
               const ag = atendendoAgora ?? proximo!
               const paciente = getPaciente(ag.paciente_id)
+              const ehEmAtendimento = ag.status === "em_atendimento"
               return (
                 <article
                   className={`rounded-2xl border-2 p-6 sm:p-8 ${
-                    atendendoAgora
+                    ehEmAtendimento
                       ? "border-primary bg-primary text-primary-foreground"
                       : "border-accent bg-accent/5"
                   }`}
@@ -219,7 +406,7 @@ export default function MedicoPage() {
                   <div className="grid lg:grid-cols-[auto,1fr,auto] gap-6 items-start">
                     <div
                       className={`rounded-xl px-5 py-4 text-center w-24 ${
-                        atendendoAgora
+                        ehEmAtendimento
                           ? "bg-primary-foreground/15"
                           : "bg-accent text-accent-foreground"
                       }`}
@@ -237,7 +424,7 @@ export default function MedicoPage() {
                         <div>
                           <p
                             className={`text-xs uppercase tracking-widest font-bold ${
-                              atendendoAgora
+                              ehEmAtendimento
                                 ? "text-primary-foreground/70"
                                 : "text-muted-foreground"
                             }`}
@@ -250,7 +437,7 @@ export default function MedicoPage() {
                           {paciente && (
                             <p
                               className={`text-sm mt-1 ${
-                                atendendoAgora
+                                ehEmAtendimento
                                   ? "text-primary-foreground/85"
                                   : "text-muted-foreground"
                               }`}
@@ -269,7 +456,7 @@ export default function MedicoPage() {
                       {ag.observacoes && (
                         <div
                           className={`mt-5 rounded-xl p-4 ${
-                            atendendoAgora
+                            ehEmAtendimento
                               ? "bg-primary-foreground/10"
                               : "bg-card border border-border"
                           }`}
@@ -288,17 +475,43 @@ export default function MedicoPage() {
                     </div>
 
                     <div className="flex flex-col gap-2 lg:min-w-[200px]">
-                      {ag.status === "agendado" && (
-                        <Button
-                          size="lg"
-                          onClick={() => iniciarAtendimento(ag)}
-                          className="bg-primary hover:bg-primary/90 gap-2 h-12 text-base"
-                        >
-                          <PlayCircle size={20} aria-hidden="true" />
-                          Iniciar atendimento
-                        </Button>
+                      {(ag.status === "agendado" ||
+                        ag.status === "confirmado") && (
+                        <>
+                          <Button
+                            size="lg"
+                            onClick={() => iniciarAtendimento(ag)}
+                            className="bg-primary hover:bg-primary/90 gap-2 h-12 text-base"
+                          >
+                            <PlayCircle size={20} aria-hidden="true" />
+                            Iniciar atendimento
+                          </Button>
+                          <div className="grid grid-cols-2 gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => marcarFaltou(ag)}
+                              className="border-2 border-amber-500/40 text-amber-700 hover:bg-amber-500/10 hover:text-amber-700 gap-1.5"
+                            >
+                              <AlertCircle
+                                size={14}
+                                aria-hidden="true"
+                              />
+                              Não compareceu
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => cancelar(ag)}
+                              className="border-2 border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive gap-1.5"
+                            >
+                              <X size={14} aria-hidden="true" />
+                              Cancelar
+                            </Button>
+                          </div>
+                        </>
                       )}
-                      {ag.status === "confirmado" && (
+                      {ehEmAtendimento && (
                         <Button
                           size="lg"
                           onClick={() => abrirEncerrar(ag)}
@@ -321,11 +534,18 @@ export default function MedicoPage() {
           <h2 id="agenda" className="sr-only">
             Agenda
           </h2>
-          <Tabs defaultValue="aguardando">
-            <TabsList className="grid grid-cols-2 w-full max-w-2xl">
-              <TabsTrigger value="aguardando" className="gap-2">
+          <Tabs defaultValue="hoje">
+            <TabsList className="grid grid-cols-3 w-full max-w-3xl">
+              <TabsTrigger value="hoje" className="gap-2">
                 <Clock size={16} aria-hidden="true" />
-                Agenda ({aguardando.length})
+                Hoje ({filaHoje.length})
+              </TabsTrigger>
+              <TabsTrigger value="proximos" className="gap-2">
+                <CalendarDays size={16} aria-hidden="true" />
+                Próximos dias ({filaProximos.reduce(
+                  (acc, g) => acc + g.itens.length,
+                  0,
+                )})
               </TabsTrigger>
               <TabsTrigger value="finalizados" className="gap-2">
                 <CheckCircle2 size={16} aria-hidden="true" />
@@ -333,28 +553,20 @@ export default function MedicoPage() {
               </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="aguardando" className="mt-4 space-y-4">
-              {aguardando.length === 0 ? (
+            <TabsContent value="hoje" className="mt-4 space-y-4">
+              {filaHoje.length === 0 ? (
                 <EmptyState
                   Icon={ClipboardList}
-                  mensagem="Nenhum paciente aguardando."
+                  mensagem="Nenhum paciente na fila de hoje."
                 />
               ) : (
-                aguardando.map((a) => (
+                filaHoje.map((a) => (
                   <AppointmentCard
                     key={a.id}
                     agendamento={a}
-                    destaque={a.status === "confirmado"}
+                    destaque={a.status === "em_atendimento"}
                     acoes={
-                      a.status === "agendado" ? (
-                        <Button
-                          onClick={() => iniciarAtendimento(a)}
-                          className="bg-primary hover:bg-primary/90 gap-2"
-                        >
-                          <PlayCircle size={16} aria-hidden="true" />
-                          Iniciar atendimento
-                        </Button>
-                      ) : (
+                      a.status === "em_atendimento" ? (
                         <Button
                           onClick={() => abrirEncerrar(a)}
                           className="bg-accent hover:bg-accent/90 text-accent-foreground gap-2"
@@ -362,9 +574,80 @@ export default function MedicoPage() {
                           <CheckCircle2 size={16} aria-hidden="true" />
                           Encerrar atendimento
                         </Button>
+                      ) : (
+                        <div className="flex flex-wrap gap-2">
+                          <Button
+                            onClick={() => iniciarAtendimento(a)}
+                            className="bg-primary hover:bg-primary/90 gap-2"
+                          >
+                            <PlayCircle size={16} aria-hidden="true" />
+                            Iniciar atendimento
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => marcarFaltou(a)}
+                            className="border-2 border-amber-500/40 text-amber-700 hover:bg-amber-500/10 hover:text-amber-700 gap-1.5"
+                          >
+                            <AlertCircle size={14} aria-hidden="true" />
+                            Não compareceu
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => cancelar(a)}
+                            className="border-2 border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive gap-1.5"
+                          >
+                            <X size={14} aria-hidden="true" />
+                            Cancelar
+                          </Button>
+                        </div>
                       )
                     }
                   />
+                ))
+              )}
+            </TabsContent>
+
+            <TabsContent value="proximos" className="mt-4 space-y-6">
+              {filaProximos.length === 0 ? (
+                <EmptyState
+                  Icon={CalendarDays}
+                  mensagem="Nenhum agendamento nos próximos 30 dias."
+                />
+              ) : (
+                filaProximos.map((grupo) => (
+                  <div key={grupo.data} className="space-y-3">
+                    <div className="flex items-center gap-2 px-1">
+                      <CalendarDays
+                        size={14}
+                        className="text-accent"
+                        aria-hidden="true"
+                      />
+                      <h3 className="font-display text-sm font-bold uppercase tracking-wider text-muted-foreground">
+                        {rotuloData(grupo.data)}
+                      </h3>
+                      <span className="text-xs text-muted-foreground">
+                        · {grupo.itens.length}{" "}
+                        {grupo.itens.length === 1
+                          ? "consulta"
+                          : "consultas"}
+                      </span>
+                    </div>
+                    {grupo.itens.map((a) => (
+                      <AppointmentCard
+                        key={a.id}
+                        agendamento={a}
+                        acoes={
+                          isHoje(a.data_agendamento) ? null : (
+                            <span className="text-xs text-muted-foreground italic">
+                              Recepção confirma no dia
+                            </span>
+                          )
+                        }
+                      />
+                    ))}
+                  </div>
                 ))
               )}
             </TabsContent>

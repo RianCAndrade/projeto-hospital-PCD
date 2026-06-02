@@ -42,6 +42,7 @@ import {
   UserPlus,
   CheckCircle2,
   CalendarPlus,
+  AlertCircle,
 } from "lucide-react"
 import { toast } from "sonner"
 import type { Agendamento } from "@/lib/types"
@@ -356,6 +357,21 @@ export default function RecepcionistaPage() {
     }
   }
 
+  async function marcarFaltou(a: Agendamento) {
+    try {
+      await alterarStatusAgendamento(a.id, "faltou")
+      toast.success("Falta registrada", {
+        description: `${getPaciente(a.paciente_id)?.nome ?? "Paciente"} • ${formatarData(a.data_agendamento)} às ${formatarHora(a.horario)}`,
+      })
+    } catch (err) {
+      const msg =
+        err instanceof ApiError
+          ? err.message
+          : "Não foi possível registrar a falta."
+      toast.error(msg)
+    }
+  }
+
   if (!usuarioLogado) return null
 
   return (
@@ -648,33 +664,48 @@ export default function RecepcionistaPage() {
                           )}
                           {(a.status === "agendado" ||
                             a.status === "confirmado") && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => abrirRemarcar(a)}
-                              className="gap-1.5 border-2"
-                            >
-                              <CalendarClock size={14} aria-hidden="true" />
-                              Remarcar
-                            </Button>
-                          )}
-                          {a.status === "agendado" && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={async () => {
-                                try {
-                                  await cancelarAgendamento(a.id)
-                                  toast.success("Consulta cancelada.")
-                                } catch {
-                                  toast.error("Erro ao cancelar.")
-                                }
-                              }}
-                              className="gap-1.5 text-destructive border-destructive/40 hover:bg-destructive/10 hover:text-destructive"
-                            >
-                              <X size={14} aria-hidden="true" />
-                              Cancelar
-                            </Button>
+                            <>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => abrirRemarcar(a)}
+                                className="gap-1.5 border-2"
+                              >
+                                <CalendarClock
+                                  size={14}
+                                  aria-hidden="true"
+                                />
+                                Remarcar
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => marcarFaltou(a)}
+                                className="gap-1.5 border-2 border-amber-500/40 text-amber-700 hover:bg-amber-500/10 hover:text-amber-700"
+                              >
+                                <AlertCircle
+                                  size={14}
+                                  aria-hidden="true"
+                                />
+                                Não compareceu
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={async () => {
+                                  try {
+                                    await cancelarAgendamento(a.id)
+                                    toast.success("Consulta cancelada.")
+                                  } catch {
+                                    toast.error("Erro ao cancelar.")
+                                  }
+                                }}
+                                className="gap-1.5 text-destructive border-destructive/40 hover:bg-destructive/10 hover:text-destructive"
+                              >
+                                <X size={14} aria-hidden="true" />
+                                Cancelar
+                              </Button>
+                            </>
                           )}
                         </div>
                       </TableCell>
