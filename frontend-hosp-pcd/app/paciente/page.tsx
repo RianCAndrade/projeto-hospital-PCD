@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useHospital } from "@/lib/store"
 import { DashboardHeader } from "@/components/dashboard-header"
@@ -43,10 +43,35 @@ import {
 } from "lucide-react"
 import { toast } from "sonner"
 import { ApiError } from "@/lib/api"
+import type { StatusAgendamento } from "@/lib/types"
 
 function montarDate(data: string, horario: string) {
   const h = horario.length === 5 ? `${horario}:00` : horario
   return new Date(`${data}T${h}`)
+}
+
+const mesesCurtos = [
+  "jan",
+  "fev",
+  "mar",
+  "abr",
+  "mai",
+  "jun",
+  "jul",
+  "ago",
+  "set",
+  "out",
+  "nov",
+  "dez",
+]
+
+function formatarDataCurta(data: string) {
+  const [, m, d] = data.split("-")
+  return `${d}/${m}`
+}
+
+function formatarHoraCurta(horario: string) {
+  return horario.slice(0, 5)
 }
 
 export default function PacientePage() {
@@ -65,6 +90,7 @@ export default function PacientePage() {
     removerResponsavel,
     getUsuario,
     getMedicoNome,
+    carregarBootstrap,
   } = useHospital()
 
   const [novoOpen, setNovoOpen] = useState(false)
@@ -99,10 +125,95 @@ export default function PacientePage() {
     [usuarioLogado, pacientesDoUsuario],
   )
 
+  /**
+   * Quando o usuário logado é o próprio paciente (`tipo_usuario === "paciente"`),
+   * achamos a linha em `tbpacientes` cuja `usuario_id` aponta para ele.
+   * É a partir desse paciente que listamos / vinculamos responsáveis.
+   */
+  const meuPacienteSelf = useMemo(() => {
+    if (!usuarioLogado || usuarioLogado.tipo_usuario !== "paciente") {
+      return null
+    }
+    return pacientes.find((p) => p.usuario_id === usuarioLogado.id) ?? null
+  }, [pacientes, usuarioLogado])
+
   const meusAgendamentos = useMemo(() => {
-    const ids = meusPacientes.map((p) => p.id)
-    return agendamentos.filter((a) => ids.includes(a.paciente_id))
-  }, [agendamentos, meusPacientes])
+    // IDs cobertos: (1) pacientes dos quais o usuário logado é responsável
+    // e (2) o próprio paciente quando o usuário logado é um paciente
+    // autônomo (criado com `pacientes.usuario_id = usuarioLogado.id`).
+    // Sem o item (2), um paciente que agenda para si mesmo nunca veria
+    // seus próprios agendamentos.
+    const ids = new Set<number>(meusPacientes.map((p) => p.id))
+    if (meuPacienteSelf) ids.add(meuPacienteSelf.id)
+    return agendamentos.filter((a) => ids.has(a.paciente_id))
+  }, [agendamentos, meusPacientes, meuPacienteSelf])
+
+  // Polling do bootstrap a cada 30s para detectar mudanças vindas de
+  // outros dispositivos (ex.: recepção confirma um agendamento).
+  useEffect(() => {
+    if (!usuarioLogado) return
+    const interval = setInterval(() => {
+      void carregarBootstrap()
+    }, 30_000)
+    return () => clearInterval(interval)
+  }, [usuarioLogado, carregarBootstrap])
+
+  // Sincronia quase instantânea entre abas: quando OUTRA aba grava no
+  // mock (ex.: recepção confirma um agendamento), o `mock.ts` dispara
+  // `acolher:mock-updated` após re-hidratar. Re-baixamos o bootstrap
+  // imediatamente para o detector de status disparar o toast.
+  useEffect(() => {
+    if (!usuarioLogado || typeof window === "undefined") return
+    const handler = () => {
+      void carregarBootstrap()
+    }
+    window.addEventListener("acolher:mock-updated", handler)
+    return () => window.removeEventListener("acolher:mock-updated", handler)
+  }, [usuarioLogado, carregarBootstrap])
+
+  // Refresh imediato ao voltar para a aba (cobre o caso de o evento
+  // `storage` não ter disparado por algum motivo, ex.: mesma aba).
+  useEffect(() => {
+    if (!usuarioLogado || typeof window === "undefined") return
+    const onFocus = () => {
+      void carregarBootstrap()
+    }
+    window.addEventListener("focus", onFocus)
+    return () => window.removeEventListener("focus", onFocus)
+  }, [usuarioLogado, carregarBootstrap])
+
+  // Detector de transições de status: emite um toast sempre que um
+  // agendamento do usuário sai de "agendado" e vira "confirmado".
+  const statusAnteriorRef = useRef<Map<number, StatusAgendamento>>(new Map())
+  const inicializadoRef = useRef(false)
+
+  useEffect(() => {
+    if (!usuarioLogado) return
+    if (!inicializadoRef.current) {
+      // Primeira renderização: popula o ref sem disparar toasts
+      statusAnteriorRef.current = new Map(
+        meusAgendamentos.map((a) => [a.id, a.status]),
+      )
+      inicializadoRef.current = true
+      return
+    }
+    const confirmadosAgora: typeof meusAgendamentos = []
+    const novoMapa = new Map<number, StatusAgendamento>()
+    for (const a of meusAgendamentos) {
+      novoMapa.set(a.id, a.status)
+      const anterior = statusAnteriorRef.current.get(a.id)
+      if (anterior === "agendado" && a.status === "confirmado") {
+        confirmadosAgora.push(a)
+      }
+    }
+    statusAnteriorRef.current = novoMapa
+
+    for (const a of confirmadosAgora) {
+      toast.success("Sua consulta foi confirmada!", {
+        description: `${formatarDataCurta(a.data_agendamento)} às ${formatarHoraCurta(a.horario)} • ${getMedicoNome(a.medico_id) || "médico"}`,
+      })
+    }
+  }, [meusAgendamentos, usuarioLogado, getMedicoNome])
 
   const proximas = useMemo(
     () =>
@@ -132,18 +243,6 @@ export default function PacientePage() {
         ),
     [meusAgendamentos],
   )
-
-  /**
-   * Quando o usuário logado é o próprio paciente (`tipo_usuario === "paciente"`),
-   * achamos a linha em `tbpacientes` cuja `usuario_id` aponta para ele.
-   * É a partir desse paciente que listamos / vinculamos responsáveis.
-   */
-  const meuPacienteSelf = useMemo(() => {
-    if (!usuarioLogado || usuarioLogado.tipo_usuario !== "paciente") {
-      return null
-    }
-    return pacientes.find((p) => p.usuario_id === usuarioLogado.id) ?? null
-  }, [pacientes, usuarioLogado])
 
   const meusResponsaveis = useMemo(() => {
     if (!meuPacienteSelf) return []

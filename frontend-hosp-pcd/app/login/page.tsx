@@ -76,7 +76,7 @@ export default function LoginPage() {
           <span className="grid h-10 w-10 place-items-center rounded-lg bg-primary-foreground text-primary">
             <Heart size={20} aria-hidden="true" fill="currentColor" />
           </span>
-          Acolher
+          Portal CIIR
         </Link>
 
         <div>

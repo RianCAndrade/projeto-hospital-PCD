@@ -33,7 +33,7 @@ export default function HomePage() {
               <span className="grid h-10 w-10 place-items-center rounded-lg bg-primary text-primary-foreground">
                 <Heart size={20} aria-hidden="true" fill="currentColor" />
               </span>
-              Acolher
+              Portal CIIR
             </Link>
             <nav aria-label="Navegação principal" className="hidden md:flex items-center gap-8 text-sm font-medium">
               <a href="#especialidades" className="hover:text-primary transition-colors">Especialidades</a>
@@ -72,7 +72,7 @@ export default function HomePage() {
                   <span className="text-accent">passo</span>.
                 </h1>
                 <p className="mt-6 text-lg md:text-xl text-muted-foreground leading-relaxed max-w-xl text-pretty">
-                  O Hospital Acolher é dedicado a mães e crianças com deficiência. Agende consultas com especialistas, acompanhe o atendimento em tempo real e sinta-se em casa.
+                  O Portal CIIR é dedicado a mães e crianças com deficiência. Agende consultas com especialistas, acompanhe o atendimento em tempo real e sinta-se em casa.
                 </p>
                 <div className="mt-8 flex flex-col sm:flex-row gap-3">
                   <Button asChild size="lg" className="text-base h-12 px-6 bg-primary hover:bg-primary/90">
@@ -172,7 +172,7 @@ export default function HomePage() {
                 Um hospital pensado para crianças únicas e mães extraordinárias.
               </h2>
               <p className="mt-4 text-muted-foreground leading-relaxed text-lg">
-                Sabemos que cada criança tem seu próprio tempo. Por isso, construímos uma experiência sem pressa, com profissionais treinados para acolher diferentes deficiências e famílias.
+                Sabemos que cada criança tem seu próprio tempo. Por isso, construímos uma experiência sem pressa, com profissionais treinados para Portal CIIR diferentes deficiências e famílias.
               </p>
             </div>
 
@@ -360,7 +360,7 @@ export default function HomePage() {
                 <span className="grid h-9 w-9 place-items-center rounded-lg bg-primary text-primary-foreground">
                   <Heart size={18} fill="currentColor" aria-hidden="true" />
                 </span>
-                Hospital Acolher
+                Portal CIIR
               </Link>
               <p className="mt-4 text-muted-foreground max-w-md leading-relaxed">
                 Cuidado especializado para mães e crianças com deficiência. Aqui, cada família é parte da nossa.
@@ -396,7 +396,7 @@ export default function HomePage() {
             </div>
           </div>
           <p className="mt-10 pt-6 border-t border-border text-xs text-muted-foreground text-center">
-            © {new Date().getFullYear()} Hospital Acolher · Todos os direitos reservados.
+            © {new Date().getFullYear()} Portal CIIR · Todos os direitos reservados.
           </p>
         </div>
       </footer>

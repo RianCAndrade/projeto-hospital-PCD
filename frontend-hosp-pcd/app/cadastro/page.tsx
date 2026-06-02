@@ -134,7 +134,7 @@ export default function CadastroPage() {
             <span className="grid h-9 w-9 place-items-center rounded-lg bg-primary text-primary-foreground">
               <Heart size={18} aria-hidden="true" fill="currentColor" />
             </span>
-            Acolher
+            Portal CIIR
           </Link>
           <Link
             href="/login"
@@ -159,7 +159,7 @@ export default function CadastroPage() {
             Cadastro de paciente
           </p>
           <h1 className="font-display text-4xl md:text-5xl font-bold mt-2 leading-tight text-pretty">
-            Bem-vinda ao <span className="text-primary">Acolher</span>.
+            Bem-vinda ao <span className="text-primary">Portal CIIR</span>.
           </h1>
           <p className="mt-3 text-muted-foreground leading-relaxed text-lg max-w-2xl">
             Crie sua conta de paciente. Se você precisa de um acompanhante

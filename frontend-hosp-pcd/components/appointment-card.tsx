@@ -3,7 +3,7 @@
 import type { Agendamento } from "@/lib/types"
 import { useHospital } from "@/lib/store"
 import { StatusBadge } from "./status-badge"
-import { Calendar, Clock, Stethoscope, MapPin, Baby } from "lucide-react"
+import { Calendar, Clock, Stethoscope, MapPin, Baby, CheckCircle2 } from "lucide-react"
 
 const diasSemana = [
   "domingo",
@@ -84,7 +84,11 @@ export function AppointmentCard({
   return (
     <article
       className={`rounded-2xl border-2 p-5 sm:p-6 transition-all hover:shadow-md ${
-        destaque ? "border-primary/40 bg-primary/5" : "border-border bg-card"
+        agendamento.status === "confirmado"
+          ? "border-primary bg-primary/5"
+          : destaque
+            ? "border-primary/40 bg-primary/5"
+            : "border-border bg-card"
       }`}
     >
       <div className="flex flex-col sm:flex-row gap-5">
@@ -120,6 +124,13 @@ export function AppointmentCard({
             </div>
             <StatusBadge status={agendamento.status} />
           </div>
+
+          {agendamento.status === "confirmado" && (
+            <p className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-primary">
+              <CheckCircle2 size={14} aria-hidden="true" />
+              Confirmada pela recepção
+            </p>
+          )}
 
           <dl className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-4">
             <div>

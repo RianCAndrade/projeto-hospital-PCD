@@ -166,7 +166,7 @@ export default function RHPage() {
       <DashboardHeader
         perfilLabel="Recursos Humanos"
         titulo="Painel do RH"
-        descricao="Cadastre e gerencie médicos e recepcionistas do Hospital Acolher."
+        descricao="Cadastre e gerencie médicos e recepcionistas do Portal CIIR."
       />
 
       <main

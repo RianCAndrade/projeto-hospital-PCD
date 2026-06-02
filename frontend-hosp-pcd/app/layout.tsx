@@ -18,9 +18,9 @@ const manrope = Manrope({
 })
 
 export const metadata: Metadata = {
-  title: "Hospital Acolher | Cuidado especializado para crianças com deficiência",
+  title: "Portal CIIR | Cuidado especializado para crianças com deficiência",
   description:
-    "Sistema de agendamento e atendimento do Hospital Acolher, dedicado a mães e crianças com deficiência. Marque consultas com especialistas e acompanhe o atendimento em tempo real.",
+    "Sistema de agendamento e atendimento do Portal CIIR, dedicado a mães e crianças com deficiência. Marque consultas com especialistas e acompanhe o atendimento em tempo real.",
   generator: "v0.app",
 }
 

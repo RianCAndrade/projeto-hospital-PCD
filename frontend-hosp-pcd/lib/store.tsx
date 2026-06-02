@@ -46,6 +46,13 @@ interface HospitalContextValue {
   login: (email: string, senha: string) => Promise<Usuario | null>
   logout: () => Promise<void>
   cadastrar: (dto: RegisterDto) => Promise<Usuario>
+  /**
+   * Re-busca o bootstrap completo do backend. Útil para ressincronizar o
+   * estado local após mudanças feitas em outro dispositivo/sessão
+   * (ex.: recepção confirma um agendamento e o painel do paciente
+   * precisa refletir isso sem refresh manual).
+   */
+  carregarBootstrap: () => Promise<void>
 
   // Dados (todos seguem o shape do backend)
   usuarios: Usuario[]
@@ -313,6 +320,7 @@ export function HospitalProvider({ children }: { children: React.ReactNode }) {
       login,
       logout,
       cadastrar,
+      carregarBootstrap,
       usuarios,
       pacientes,
       responsaveis,
@@ -344,6 +352,7 @@ export function HospitalProvider({ children }: { children: React.ReactNode }) {
       login,
       logout,
       cadastrar,
+      carregarBootstrap,
       usuarios,
       pacientes,
       responsaveis,
