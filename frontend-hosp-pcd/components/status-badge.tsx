@@ -7,6 +7,7 @@ import {
   XCircle,
   CalendarCheck,
   CalendarX,
+  BellRing,
   HelpCircle,
 } from "lucide-react"
 
@@ -40,6 +41,12 @@ const config: Record<string, BadgeConfig> = {
     bg: "bg-status-aguardando",
     fg: "text-status-aguardando-foreground",
     Icon: CalendarCheck,
+  },
+  chamado: {
+    label: "Chamado",
+    bg: "bg-amber-500",
+    fg: "text-white",
+    Icon: BellRing,
   },
   finalizado: {
     label: "Finalizado",

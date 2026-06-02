@@ -75,4 +75,19 @@ class AgendamentoRepository
 
         return $agendamento->delete();
     }
+
+    /**
+     * Reverte para `confirmado` todos os agendamentos do médico que
+     * estiverem com status `chamado`, exceto o que está sendo chamado
+     * agora. Chamado pelo `AgendamentoService::chamar` para garantir que
+     * o médico sempre tenha no máximo um paciente em estado "chamado".
+     */
+    public function reverterChamadoDoMedico(int $medicoId, int $excetoId): int
+    {
+        return $this->agendamento
+            ->where('medico_id', $medicoId)
+            ->where('status', 'chamado')
+            ->where('id', '!=', $excetoId)
+            ->update(['status' => 'confirmado']);
+    }
 }

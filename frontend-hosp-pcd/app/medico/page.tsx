@@ -29,9 +29,11 @@ import {
   CalendarDays,
   AlertCircle,
   X,
+  BellRing,
 } from "lucide-react"
 import { toast } from "sonner"
 import type { Agendamento } from "@/lib/types"
+import { ApiError } from "@/lib/api"
 
 function montarDate(data: string, horario: string) {
   const h = horario.length === 5 ? `${horario}:00` : horario
@@ -44,6 +46,23 @@ function formatarHora(data: string, horario: string) {
     .getMinutes()
     .toString()
     .padStart(2, "0")}`
+}
+
+/**
+ * Formata quanto tempo atrás o paciente foi chamado, baseado no
+ * `updated_at` do agendamento. Usado para mostrar "há 2 min" no card
+ * em destaque e na lista da fila.
+ */
+function tempoChamado(updatedAt: string | undefined, now = Date.now()) {
+  if (!updatedAt) return ""
+  const t = new Date(updatedAt).getTime()
+  if (Number.isNaN(t)) return ""
+  const diffMs = now - t
+  if (diffMs < 30_000) return "agora"
+  const min = Math.floor(diffMs / 60_000)
+  if (min < 60) return `há ${min} min`
+  const h = Math.floor(min / 60)
+  return `há ${h}h`
 }
 
 const DIAS_SEMANA = [
@@ -98,11 +117,23 @@ export default function MedicoPage() {
     getPaciente,
     alterarStatusAgendamento,
     cancelarAgendamento,
+    chamarAgendamento,
+    iniciarAtendimentoAgendamento,
     carregarBootstrap,
   } = useHospital()
   const [encerrarOpen, setEncerrarOpen] = useState(false)
   const [agSelecionado, setAgSelecionado] = useState<Agendamento | null>(null)
   const [observacoesEncerrar, setObservacoesEncerrar] = useState("")
+  /**
+   * Tick que avança a cada 60s. Usado para re-renderizar o texto
+   * "há X min" dos cards em estado `chamado`. Mantemos no nível da
+   * página inteira para evitar N `setInterval` por card.
+   */
+  const [, setTick] = useState(0)
+  useEffect(() => {
+    const id = setInterval(() => setTick((t) => t + 1), 60_000)
+    return () => clearInterval(id)
+  }, [])
 
   useEffect(() => {
     if (!usuarioLogado || usuarioLogado.tipo_usuario !== "medico") {
@@ -199,14 +230,26 @@ export default function MedicoPage() {
       meusAgendamentos
         .filter(
           (a) =>
-            (a.status === "agendado" || a.status === "confirmado") &&
+            (a.status === "agendado" ||
+              a.status === "confirmado" ||
+              a.status === "chamado") &&
             isHoje(a.data_agendamento),
         )
-        .sort(
-          (a, b) =>
+        .sort((a, b) => {
+          // Ordem de prioridade na fila:
+          //   1) chamado (esperando o paciente chegar)
+          //   2) confirmado (pronto para chamar)
+          //   3) agendado (ainda depende da recepção confirmar)
+          const rank = (s: typeof a.status) =>
+            s === "chamado" ? 0 : s === "confirmado" ? 1 : 2
+          const ra = rank(a.status)
+          const rb = rank(b.status)
+          if (ra !== rb) return ra - rb
+          return (
             montarDate(a.data_agendamento, a.horario).getTime() -
-            montarDate(b.data_agendamento, b.horario).getTime(),
-        ),
+            montarDate(b.data_agendamento, b.horario).getTime()
+          )
+        }),
     [meusAgendamentos, hojeKey],
   )
 
@@ -242,7 +285,9 @@ export default function MedicoPage() {
     () =>
       meusAgendamentos.filter(
         (a) =>
-          (a.status === "agendado" || a.status === "confirmado") &&
+          (a.status === "agendado" ||
+            a.status === "confirmado" ||
+            a.status === "chamado") &&
           (isHoje(a.data_agendamento) || isProximo(a.data_agendamento)),
       ).length,
     [meusAgendamentos, hojeKey, limiteProximosKey],
@@ -260,15 +305,35 @@ export default function MedicoPage() {
     [meusAgendamentos],
   )
 
+  async function chamar(a: Agendamento) {
+    try {
+      await chamarAgendamento(a.id)
+      const pacienteNome = getPaciente(a.paciente_id)?.nome ?? "paciente"
+      toast.success("Paciente chamado", {
+        description: `${pacienteNome} foi chamado(a). Aguarde a chegada para iniciar.`,
+      })
+    } catch (err) {
+      const msg =
+        err instanceof ApiError
+          ? err.message
+          : "Não foi possível chamar o paciente."
+      toast.error(msg)
+    }
+  }
+
   async function iniciarAtendimento(a: Agendamento) {
     try {
-      await alterarStatusAgendamento(a.id, "em_atendimento")
+      await iniciarAtendimentoAgendamento(a.id)
       const pacienteNome = getPaciente(a.paciente_id)?.nome ?? "paciente"
       toast.success("Atendimento iniciado", {
         description: `Paciente ${pacienteNome} marcado como em atendimento.`,
       })
     } catch (err) {
-      toast.error("Não foi possível iniciar o atendimento.")
+      const msg =
+        err instanceof ApiError
+          ? err.message
+          : "Não foi possível iniciar o atendimento."
+      toast.error(msg)
     }
   }
 
@@ -321,8 +386,14 @@ export default function MedicoPage() {
 
   // O primeiro (e idealmente único) atendimento em andamento vira destaque.
   const atendendoAgora = emAtendimento[0] ?? null
-  // "Próximo" só faz sentido quando não há ninguém em atendimento:
-  const proximo = atendendoAgora ? null : filaHoje[0] ?? null
+  // "Próximo" só faz sentido quando não há ninguém em atendimento,
+  // e nunca aponta para um `agendado` (ainda depende da recepção
+  // confirmar — não há ação possível até lá).
+  const proximo = atendendoAgora
+    ? null
+    : (filaHoje.find(
+        (a) => a.status === "chamado" || a.status === "confirmado",
+      ) ?? null)
 
   return (
     <div className="min-h-screen bg-background">
@@ -395,12 +466,15 @@ export default function MedicoPage() {
               const ag = atendendoAgora ?? proximo!
               const paciente = getPaciente(ag.paciente_id)
               const ehEmAtendimento = ag.status === "em_atendimento"
+              const ehChamado = ag.status === "chamado"
               return (
                 <article
                   className={`rounded-2xl border-2 p-6 sm:p-8 ${
                     ehEmAtendimento
                       ? "border-primary bg-primary text-primary-foreground"
-                      : "border-accent bg-accent/5"
+                      : ehChamado
+                        ? "border-amber-500 bg-amber-50 text-amber-950"
+                        : "border-accent bg-accent/5"
                   }`}
                 >
                   <div className="grid lg:grid-cols-[auto,1fr,auto] gap-6 items-start">
@@ -408,11 +482,13 @@ export default function MedicoPage() {
                       className={`rounded-xl px-5 py-4 text-center w-24 ${
                         ehEmAtendimento
                           ? "bg-primary-foreground/15"
-                          : "bg-accent text-accent-foreground"
+                          : ehChamado
+                            ? "bg-amber-500 text-white"
+                            : "bg-accent text-accent-foreground"
                       }`}
                     >
                       <p className="text-xs uppercase tracking-widest font-bold opacity-90">
-                        Hoje
+                        {ehChamado ? "Chamado" : "Hoje"}
                       </p>
                       <p className="font-display text-3xl font-bold mt-1">
                         {formatarHora(ag.data_agendamento, ag.horario)}
@@ -426,7 +502,9 @@ export default function MedicoPage() {
                             className={`text-xs uppercase tracking-widest font-bold ${
                               ehEmAtendimento
                                 ? "text-primary-foreground/70"
-                                : "text-muted-foreground"
+                                : ehChamado
+                                  ? "text-amber-700"
+                                  : "text-muted-foreground"
                             }`}
                           >
                             Paciente
@@ -439,7 +517,9 @@ export default function MedicoPage() {
                               className={`text-sm mt-1 ${
                                 ehEmAtendimento
                                   ? "text-primary-foreground/85"
-                                  : "text-muted-foreground"
+                                  : ehChamado
+                                    ? "text-amber-900/80"
+                                    : "text-muted-foreground"
                               }`}
                             >
                               {paciente.possui_autismo && "TEA · "}
@@ -448,7 +528,13 @@ export default function MedicoPage() {
                             </p>
                           )}
                         </div>
-                        <div className="ml-auto">
+                        <div className="ml-auto flex items-center gap-2">
+                          {ehChamado && (
+                            <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/15 text-amber-800 px-3 py-1 text-xs font-bold uppercase tracking-widest">
+                              <BellRing size={14} aria-hidden="true" />
+                              {tempoChamado(ag.updated_at)}
+                            </span>
+                          )}
                           <StatusBadge status={ag.status} size="lg" />
                         </div>
                       </div>
@@ -458,7 +544,9 @@ export default function MedicoPage() {
                           className={`mt-5 rounded-xl p-4 ${
                             ehEmAtendimento
                               ? "bg-primary-foreground/10"
-                              : "bg-card border border-border"
+                              : ehChamado
+                                ? "bg-amber-100/60 border border-amber-200"
+                                : "bg-card border border-border"
                           }`}
                         >
                           <div className="flex items-center gap-2 mb-1">
@@ -475,8 +563,42 @@ export default function MedicoPage() {
                     </div>
 
                     <div className="flex flex-col gap-2 lg:min-w-[200px]">
-                      {(ag.status === "agendado" ||
-                        ag.status === "confirmado") && (
+                      {ag.status === "confirmado" && (
+                        <>
+                          <Button
+                            size="lg"
+                            onClick={() => chamar(ag)}
+                            className="bg-amber-500 hover:bg-amber-600 text-white gap-2 h-12 text-base"
+                          >
+                            <BellRing size={20} aria-hidden="true" />
+                            Chamar paciente
+                          </Button>
+                          <div className="grid grid-cols-2 gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => marcarFaltou(ag)}
+                              className="border-2 border-amber-500/40 text-amber-700 hover:bg-amber-500/10 hover:text-amber-700 gap-1.5"
+                            >
+                              <AlertCircle
+                                size={14}
+                                aria-hidden="true"
+                              />
+                              Não compareceu
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => cancelar(ag)}
+                              className="border-2 border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive gap-1.5"
+                            >
+                              <X size={14} aria-hidden="true" />
+                              Cancelar
+                            </Button>
+                          </div>
+                        </>
+                      )}
+                      {ehChamado && (
                         <>
                           <Button
                             size="lg"
@@ -574,7 +696,7 @@ export default function MedicoPage() {
                           <CheckCircle2 size={16} aria-hidden="true" />
                           Encerrar atendimento
                         </Button>
-                      ) : (
+                      ) : a.status === "chamado" ? (
                         <div className="flex flex-wrap gap-2">
                           <Button
                             onClick={() => iniciarAtendimento(a)}
@@ -602,6 +724,39 @@ export default function MedicoPage() {
                             Cancelar
                           </Button>
                         </div>
+                      ) : a.status === "confirmado" ? (
+                        <div className="flex flex-wrap gap-2">
+                          <Button
+                            onClick={() => chamar(a)}
+                            className="bg-amber-500 hover:bg-amber-600 text-white gap-2"
+                          >
+                            <BellRing size={16} aria-hidden="true" />
+                            Chamar paciente
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => marcarFaltou(a)}
+                            className="border-2 border-amber-500/40 text-amber-700 hover:bg-amber-500/10 hover:text-amber-700 gap-1.5"
+                          >
+                            <AlertCircle size={14} aria-hidden="true" />
+                            Não compareceu
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => cancelar(a)}
+                            className="border-2 border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive gap-1.5"
+                          >
+                            <X size={14} aria-hidden="true" />
+                            Cancelar
+                          </Button>
+                        </div>
+                      ) : (
+                        <p className="text-xs text-muted-foreground italic flex items-center gap-1.5">
+                          <Clock size={14} aria-hidden="true" />
+                          Aguardando confirmação da recepção
+                        </p>
                       )
                     }
                   />

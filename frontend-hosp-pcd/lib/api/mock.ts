@@ -702,6 +702,51 @@ export const mockApi: HospitalApi = {
       persistirEstado()
       return atualizado
     },
+    /**
+     * Espelha `AgendamentoService::chamar` do backend: exige
+     * status `confirmado` e reverte outros `chamado` do mesmo
+     * médico para `confirmado`.
+     */
+    async chamar(id) {
+      await delay(200)
+      const ag = agendamentosState.find((a) => a.id === id)
+      if (!ag) throw new ApiError(404, "Agendamento não encontrado")
+      if (ag.status !== "confirmado") {
+        throw new ApiError(
+          422,
+          "Somente agendamentos confirmados podem ser chamados.",
+        )
+      }
+      agendamentosState = agendamentosState.map((a) => {
+        if (a.id === id) {
+          return { ...a, status: "chamado", updated_at: nowISO() }
+        }
+        if (a.medico_id === ag.medico_id && a.status === "chamado") {
+          return { ...a, status: "confirmado", updated_at: nowISO() }
+        }
+        return a
+      })
+      persistirEstado()
+      const atualizado = agendamentosState.find((a) => a.id === id)
+      if (!atualizado) throw new ApiError(404, "Agendamento não encontrado")
+      return atualizado
+    },
+    /**
+     * Espelha `AgendamentoService::iniciarAtendimento` do backend:
+     * só permite a transição se o status atual for `chamado`.
+     */
+    async iniciar(id) {
+      await delay(200)
+      const ag = agendamentosState.find((a) => a.id === id)
+      if (!ag) throw new ApiError(404, "Agendamento não encontrado")
+      if (ag.status !== "chamado") {
+        throw new ApiError(
+          422,
+          "Somente agendamentos chamados podem ser iniciados.",
+        )
+      }
+      return mockApi.agendamentos.updateStatus(id, "em_atendimento")
+    },
   },
 
   atendimentos: {

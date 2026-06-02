@@ -59,6 +59,8 @@ import type {
  *   ✓ PATCH  /api/agendamentos/{id}/status
  *   ✓ PATCH  /api/agendamentos/{id}/cancelar
  *   ✓ PATCH  /api/agendamentos/{id}/remarcar
+ *   ✓ PATCH  /api/agendamentos/{id}/chamar
+ *   ✓ PATCH  /api/agendamentos/{id}/iniciar
  *
  *   ✓ GET    /api/atendimentos                     (AtendimentoController)
  *   ✓ GET    /api/atendimentos/{id}
@@ -248,6 +250,28 @@ export const realApi: HospitalApi = {
       return apiFetch<Agendamento>(`/agendamentos/${id}/remarcar`, {
         method: "PATCH",
         body: dto,
+      })
+    },
+    /**
+     * PATCH /api/agendamentos/{id}/chamar
+     *
+     * Implementado em `AgendamentoController::chamar`. Reverte outros
+     * `chamado` do mesmo médico para `confirmado` automaticamente.
+     */
+    chamar(id) {
+      return apiFetch<Agendamento>(`/agendamentos/${id}/chamar`, {
+        method: "PATCH",
+      })
+    },
+    /**
+     * PATCH /api/agendamentos/{id}/iniciar
+     *
+     * Implementado em `AgendamentoController::iniciarAtendimento`.
+     * Exige status `chamado` no servidor.
+     */
+    iniciar(id) {
+      return apiFetch<Agendamento>(`/agendamentos/${id}/iniciar`, {
+        method: "PATCH",
       })
     },
   },

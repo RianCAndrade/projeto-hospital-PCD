@@ -43,6 +43,10 @@ return new class extends Migration
                 'medico_id' => 3,
                 'especialidade_id' => 3,
             ],
+            // [
+            //     'medico_id' => 6,
+            //     'especialidade_id' => 3,
+            // ],
         ]);
     }
 

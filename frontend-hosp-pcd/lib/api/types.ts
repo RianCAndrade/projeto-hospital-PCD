@@ -394,6 +394,18 @@ export interface HospitalApi {
     updateStatus(id: number, status: StatusAgendamento): Promise<Agendamento>
     cancel(id: number): Promise<Agendamento>
     reschedule(id: number, dto: RescheduleAgendamentoDto): Promise<Agendamento>
+    /**
+     * Move o agendamento de `confirmado` para `chamado` (estado
+     * intermediário). Reverte automaticamente outros `chamado` do
+     * mesmo médico para `confirmado`. Rejeita (422) se o status
+     * atual não for `confirmado`.
+     */
+    chamar(id: number): Promise<Agendamento>
+    /**
+     * Move o agendamento de `chamado` para `em_atendimento`. Rejeita
+     * (422) se o médico pular a etapa de "chamar".
+     */
+    iniciar(id: number): Promise<Agendamento>
   }
 
   atendimentos: {

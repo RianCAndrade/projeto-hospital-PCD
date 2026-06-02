@@ -62,16 +62,16 @@ return new class extends Migration
                 'created_at' => now(),
                 'updated_at' => now(),
             ],
-            [
-                'nome' => 'Alex',
-                'cpf' => '123.456.789-02',
-                'email' => 'alex@acolher.com',
-                'senha' => Hash::make('medico123'),
-                'telefone' => '(11) 99999-9999',
-                'tipo_usuario' => TiposUsuario::Medico->value,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ],
+            // [
+            //     'nome' => 'Alex',
+            //     'cpf' => '123.456.789-02',
+            //     'email' => 'alex@acolher.com',
+            //     'senha' => Hash::make('medico123'),
+            //     'telefone' => '(11) 99999-9999',
+            //     'tipo_usuario' => TiposUsuario::Medico->value,
+            //     'created_at' => now(),
+            //     'updated_at' => now(),
+            // ],
         ]);
     }
 

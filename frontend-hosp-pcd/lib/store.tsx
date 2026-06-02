@@ -85,6 +85,19 @@ interface HospitalContextValue {
     id: number,
     dto: RescheduleAgendamentoDto,
   ) => Promise<void>
+  /**
+   * Move `confirmado` → `chamado`. O backend reverte outros `chamado`
+   * do mesmo médico para `confirmado`; o `setAgendamentos` aqui usa o
+   * `agendamento` retornado, mas como o backend só devolve o item
+   * atualizado (não a lista), recarregamos o estado para refletir o
+   * "anterior voltou pra fila".
+   */
+  chamarAgendamento: (id: number) => Promise<Agendamento>
+  /**
+   * Move `chamado` → `em_atendimento`. O backend rejeita (422) se o
+   * médico pular a etapa de chamar.
+   */
+  iniciarAtendimentoAgendamento: (id: number) => Promise<Agendamento>
 
   criarPaciente: (dto: CreatePacienteDto) => Promise<Paciente>
 
@@ -259,6 +272,21 @@ export function HospitalProvider({ children }: { children: React.ReactNode }) {
     [],
   )
 
+  const chamarAgendamento = useCallback(async (id: number) => {
+    const atualizado = await api.agendamentos.chamar(id)
+    // O backend reverteu o "chamado" anterior do mesmo médico para
+    // `confirmado`, mas só devolveu este item no payload. Re-baixamos
+    // o bootstrap para refletir a mudança global na fila.
+    await carregarBootstrap()
+    return atualizado
+  }, [carregarBootstrap])
+
+  const iniciarAtendimentoAgendamento = useCallback(async (id: number) => {
+    const atualizado = await api.agendamentos.iniciar(id)
+    setAgendamentos((prev) => prev.map((a) => (a.id === id ? atualizado : a)))
+    return atualizado
+  }, [])
+
   const criarPaciente = useCallback(async (dto: CreatePacienteDto) => {
     const novo = await api.pacientes.create(dto)
     setPacientes((prev) => [...prev, novo])
@@ -339,6 +367,8 @@ export function HospitalProvider({ children }: { children: React.ReactNode }) {
       alterarStatusAgendamento,
       cancelarAgendamento,
       remarcarAgendamento,
+      chamarAgendamento,
+      iniciarAtendimentoAgendamento,
       criarPaciente,
       vincularResponsavel,
       removerResponsavel,
@@ -371,6 +401,8 @@ export function HospitalProvider({ children }: { children: React.ReactNode }) {
       alterarStatusAgendamento,
       cancelarAgendamento,
       remarcarAgendamento,
+      chamarAgendamento,
+      iniciarAtendimentoAgendamento,
       criarPaciente,
       vincularResponsavel,
       removerResponsavel,
