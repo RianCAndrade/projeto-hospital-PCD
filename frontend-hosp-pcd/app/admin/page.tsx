@@ -293,7 +293,6 @@ export default function AdminPage() {
         telefone: pacTel,
         senha: pacSenha,
         tipo_usuario: "paciente",
-        precisa_responsavel: pacPrecisaResp,
       })
       toast.success("Paciente cadastrado(a) com sucesso.")
       setPacNome("")

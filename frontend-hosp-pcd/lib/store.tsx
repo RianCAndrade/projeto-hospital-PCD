@@ -111,38 +111,45 @@ export function HospitalProvider({ children }: { children: React.ReactNode }) {
   const [usuarioLogado, setUsuarioLogado] = useState<Usuario | null>(null)
   const [carregando, setCarregando] = useState(true)
 
-  // Carga inicial: tenta o bootstrap do backend; se falhar, mantém mock.
+  // Carga inicial + helper para ressincronizar após login/cadastro.
+  const carregarBootstrap = useCallback(async () => {
+    try {
+      const data = await api.bootstrap()
+      setUsuarioLogado(data.usuario)
+      setUsuarios(data.usuarios)
+      setPacientes(data.pacientes)
+      setResponsaveis(data.responsaveis)
+      setMedicos(data.medicos)
+      setAgendamentos(data.agendamentos)
+      setEspecialidades(data.especialidades)
+      setTiposDeficiencia(data.tipos_deficiencia)
+    } catch {
+      // bootstrap pode não existir ainda no backend — silencioso
+    }
+  }, [])
+
   useEffect(() => {
     let ativo = true
     ;(async () => {
-      try {
-        const data = await api.bootstrap()
-        if (!ativo) return
-        setUsuarioLogado(data.usuario)
-        setUsuarios(data.usuarios)
-        setPacientes(data.pacientes)
-        setResponsaveis(data.responsaveis)
-        setMedicos(data.medicos)
-        setAgendamentos(data.agendamentos)
-        setEspecialidades(data.especialidades)
-        setTiposDeficiencia(data.tipos_deficiencia)
-      } catch {
-        // bootstrap pode não existir ainda no backend — silencioso
-      } finally {
-        if (ativo) setCarregando(false)
-      }
+      if (!ativo) return
+      await carregarBootstrap()
+      if (ativo) setCarregando(false)
     })()
     return () => {
       ativo = false
     }
-  }, [])
+  }, [carregarBootstrap])
 
   // ── Auth ──────────────────────────────────────────────────────────────
   const login = useCallback(async (email: string, senha: string) => {
     const res = await api.auth.login({ email, senha })
     setUsuarioLogado(res.usuario)
+    // Ressincroniza tabelas (responsaveis, pacientes, etc.) com o estado
+    // do servidor, já que o login pode ser de um usuário que não estava
+    // carregado no momento do bootstrap inicial.
+    await carregarBootstrap()
     return res.usuario
-  }, [])
+  }, [carregarBootstrap])
 
   const logout = useCallback(async () => {
     try {
@@ -156,11 +163,12 @@ export function HospitalProvider({ children }: { children: React.ReactNode }) {
   const cadastrar = useCallback(async (dto: RegisterDto) => {
     const res = await api.auth.register(dto)
     setUsuarios((prev) => [...prev, res.usuario])
-    // O backend real (RegisterController) NÃO devolve token,
-    // então não logamos automaticamente. A página deve redirecionar
-    // para /login. O mock segue o mesmo contrato.
+    // O backend pode ter criado um Paciente e/ou Responsavel + vinculo
+    // na mesma chamada. Re-baixamos o bootstrap para que a UI veja esses
+    // registros sem precisar de um refresh manual.
+    await carregarBootstrap()
     return res.usuario
-  }, [])
+  }, [carregarBootstrap])
 
   // ── Helpers ───────────────────────────────────────────────────────────
   const getUsuario = useCallback(

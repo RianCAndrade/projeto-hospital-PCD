@@ -37,9 +37,16 @@ export default function CadastroPage() {
   const [necessitaAcompanhante, setNecessitaAcompanhante] = useState(false)
   const [observacoes, setObservacoes] = useState("")
   const [observacoesComunicacao, setObservacoesComunicacao] = useState("")
-  const [precisaResponsavel, setPrecisaResponsavel] = useState(false)
   const [aceiteTermos, setAceiteTermos] = useState(false)
   const [carregando, setCarregando] = useState(false)
+
+  // Vínculo de responsável (criado inline quando necessita_acompanhante = true)
+  const [respNome, setRespNome] = useState("")
+  const [respEmail, setRespEmail] = useState("")
+  const [respTel, setRespTel] = useState("")
+  const [respSenha, setRespSenha] = useState("")
+  const [respParentesco, setRespParentesco] = useState("Mãe")
+  const [respPrincipal, setRespPrincipal] = useState(true)
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -50,6 +57,18 @@ export default function CadastroPage() {
     if (senha.length < 6) {
       toast.error("A senha deve ter ao menos 6 caracteres.")
       return
+    }
+    if (necessitaAcompanhante) {
+      if (!respNome || !respEmail || !respSenha || !respParentesco) {
+        toast.error(
+          "Preencha nome, email, senha e parentesco do responsável.",
+        )
+        return
+      }
+      if (respSenha.length < 6) {
+        toast.error("A senha do responsável deve ter ao menos 6 caracteres.")
+        return
+      }
     }
     if (!aceiteTermos) {
       toast.error("Você precisa aceitar os termos para continuar.")
@@ -73,12 +92,23 @@ export default function CadastroPage() {
         observacoes: observacoes || undefined,
         observacoes_comunicacao: observacoesComunicacao || undefined,
         tipo_usuario: "paciente",
-        precisa_responsavel: precisaResponsavel,
+        // Quando o paciente marca "necessita de acompanhante", criamos o
+        // responsável inline na mesma chamada ao /api/register.
+        ...(necessitaAcompanhante
+          ? {
+              responsavel_nome: respNome,
+              responsavel_email: respEmail,
+              responsavel_telefone: respTel || undefined,
+              responsavel_senha: respSenha,
+              responsavel_parentesco: respParentesco,
+              responsavel_principal: respPrincipal,
+            }
+          : {}),
       })
 
       toast.success("Cadastro realizado com sucesso!", {
-        description: precisaResponsavel
-          ? "Após o login, vincule o responsável no seu painel."
+        description: necessitaAcompanhante
+          ? "A conta do responsável foi criada na mesma operação."
           : "Use seu email e senha para entrar.",
       })
       router.push("/login")
@@ -132,9 +162,10 @@ export default function CadastroPage() {
             Bem-vinda ao <span className="text-primary">Acolher</span>.
           </h1>
           <p className="mt-3 text-muted-foreground leading-relaxed text-lg max-w-2xl">
-            Crie sua conta de paciente. Se precisar de um responsável
-            vinculado (mãe, pai, cuidador), basta marcar a opção abaixo —
-            você poderá vinculá-lo após o login.
+            Crie sua conta de paciente. Se você precisa de um acompanhante
+            durante o atendimento (mãe, pai, cuidador), marque a opção
+            abaixo — você poderá cadastrá-lo na mesma etapa e a conta dele
+            será criada com o vínculo pronto.
           </p>
           <p className="mt-2 text-sm text-muted-foreground">
             É funcionário (médico, recepcionista ou RH)? Sua conta é criada
@@ -143,52 +174,6 @@ export default function CadastroPage() {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-10" noValidate>
-          {/* Responsável */}
-          <section
-            aria-labelledby="precisa-responsavel"
-            className="rounded-2xl border-2 border-accent/30 bg-accent/5 p-6 sm:p-8"
-          >
-            <div className="flex items-center gap-3 mb-4">
-              <span className="grid h-10 w-10 place-items-center rounded-xl bg-accent text-accent-foreground">
-                <HeartHandshake size={20} aria-hidden="true" />
-              </span>
-              <div>
-                <h2
-                  id="precisa-responsavel"
-                  className="font-display text-xl font-bold"
-                >
-                  Preciso de um responsável?
-                </h2>
-                <p className="text-sm text-muted-foreground">
-                  Marque se você é criança/adolescente ou se precisa que
-                  outra pessoa acompanhe e marque consultas por você.
-                </p>
-              </div>
-            </div>
-
-            <label
-              htmlFor="precisa-resp"
-              className="flex items-start gap-3 cursor-pointer rounded-xl border-2 border-border bg-card p-4 has-[input:checked]:border-primary has-[input:checked]:bg-primary/5 transition-colors"
-            >
-              <input
-                id="precisa-resp"
-                type="checkbox"
-                checked={precisaResponsavel}
-                onChange={(e) => setPrecisaResponsavel(e.target.checked)}
-                className="mt-1 h-5 w-5 rounded border-2 border-border accent-primary"
-              />
-              <span className="text-sm leading-relaxed">
-                <span className="font-display font-bold block">
-                  Sim, preciso vincular um responsável
-                </span>
-                <span className="text-muted-foreground">
-                  Após criar a conta, você poderá cadastrar o responsável
-                  (nome, CPF, parentesco) no seu painel.
-                </span>
-              </span>
-            </label>
-          </section>
-
           {/* Dados pessoais */}
           <section
             aria-labelledby="dados-pessoais"
@@ -406,6 +391,155 @@ export default function CadastroPage() {
                 </label>
               ))}
             </div>
+
+            {necessitaAcompanhante && (
+              <div
+                className="mt-6 rounded-2xl border-2 border-accent/30 bg-accent/5 p-5 sm:p-6 space-y-5"
+                aria-labelledby="vincular-responsavel-cadastro"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="grid h-9 w-9 place-items-center rounded-xl bg-accent text-accent-foreground">
+                    <HeartHandshake size={18} aria-hidden="true" />
+                  </span>
+                  <div>
+                    <h3
+                      id="vincular-responsavel-cadastro"
+                      className="font-display text-lg font-bold"
+                    >
+                      Vincular responsável
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      Crie a conta do acompanhante (mãe, pai ou cuidador(a))
+                      agora. A conta dele(a) será vinculada a você na mesma
+                      operação.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <div className="sm:col-span-2 space-y-2">
+                    <Label
+                      htmlFor="r-cad-nome"
+                      className="text-sm font-semibold"
+                    >
+                      Nome do responsável
+                    </Label>
+                    <Input
+                      id="r-cad-nome"
+                      required={necessitaAcompanhante}
+                      value={respNome}
+                      onChange={(e) => setRespNome(e.target.value)}
+                      placeholder="Ex.: Marina Oliveira"
+                      className="h-11"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label
+                      htmlFor="r-cad-email"
+                      className="text-sm font-semibold"
+                    >
+                      Email
+                    </Label>
+                    <Input
+                      id="r-cad-email"
+                      type="email"
+                      required={necessitaAcompanhante}
+                      value={respEmail}
+                      onChange={(e) => setRespEmail(e.target.value)}
+                      className="h-11"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label
+                      htmlFor="r-cad-tel"
+                      className="text-sm font-semibold"
+                    >
+                      Telefone
+                    </Label>
+                    <Input
+                      id="r-cad-tel"
+                      type="tel"
+                      value={respTel}
+                      onChange={(e) => setRespTel(e.target.value)}
+                      className="h-11"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label
+                      htmlFor="r-cad-senha"
+                      className="text-sm font-semibold"
+                    >
+                      Senha provisória
+                    </Label>
+                    <Input
+                      id="r-cad-senha"
+                      type="password"
+                      required={necessitaAcompanhante}
+                      value={respSenha}
+                      onChange={(e) => setRespSenha(e.target.value)}
+                      placeholder="Mínimo 6 caracteres"
+                      className="h-11"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label
+                      htmlFor="r-cad-parentesco"
+                      className="text-sm font-semibold"
+                    >
+                      Parentesco
+                    </Label>
+                    <Select
+                      value={respParentesco}
+                      onValueChange={setRespParentesco}
+                    >
+                      <SelectTrigger
+                        id="r-cad-parentesco"
+                        className="h-11"
+                      >
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Mãe">Mãe</SelectItem>
+                        <SelectItem value="Pai">Pai</SelectItem>
+                        <SelectItem value="Avó/Avô">Avó/Avô</SelectItem>
+                        <SelectItem value="Tio/Tia">Tio/Tia</SelectItem>
+                        <SelectItem value="Irmão/Irmã">Irmão/Irmã</SelectItem>
+                        <SelectItem value="Cuidador(a)">Cuidador(a)</SelectItem>
+                        <SelectItem value="Tutor(a) legal">
+                          Tutor(a) legal
+                        </SelectItem>
+                        <SelectItem value="Outro">Outro</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <label
+                  htmlFor="r-cad-principal"
+                  className="flex items-start gap-3 cursor-pointer rounded-xl border-2 border-border bg-card p-3 has-[input:checked]:border-primary has-[input:checked]:bg-primary/5 transition-colors"
+                >
+                  <input
+                    id="r-cad-principal"
+                    type="checkbox"
+                    checked={respPrincipal}
+                    onChange={(e) => setRespPrincipal(e.target.checked)}
+                    className="mt-1 h-5 w-5 rounded border-2 border-border accent-primary"
+                  />
+                  <span className="text-sm leading-relaxed">
+                    <span className="font-display font-bold block">
+                      Responsável principal
+                    </span>
+                    <span className="text-muted-foreground">
+                      É a pessoa de contato preferencial do hospital.
+                    </span>
+                  </span>
+                </label>
+              </div>
+            )}
 
             <div className="grid sm:grid-cols-2 gap-5 mt-6">
               <div className="space-y-2">

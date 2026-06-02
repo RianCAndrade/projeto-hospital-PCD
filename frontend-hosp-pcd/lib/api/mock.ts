@@ -117,6 +117,7 @@ export const mockApi: HospitalApi = {
 
       const tipo = dto.tipo_usuario ?? "paciente"
       const ehPaciente = tipo === "paciente"
+      const precisaResponsavel = !!dto.necessita_acompanhante
 
       // Validações espelhando o RegisterController:
       // CPF + dados PCD são obrigatórios SÓ para paciente.
@@ -125,6 +126,20 @@ export const mockApi: HospitalApi = {
         if (!dto.data_nascimento)
           throw new ApiError(422, "O campo data_nascimento é obrigatório.")
         if (!dto.sexo) throw new ApiError(422, "O campo sexo é obrigatório.")
+      }
+
+      if (ehPaciente && precisaResponsavel) {
+        if (!dto.responsavel_nome)
+          throw new ApiError(422, "O campo responsavel_nome é obrigatório.")
+        if (!dto.responsavel_email)
+          throw new ApiError(422, "O campo responsavel_email é obrigatório.")
+        if (!dto.responsavel_senha)
+          throw new ApiError(422, "O campo responsavel_senha é obrigatório.")
+        if (!dto.responsavel_parentesco)
+          throw new ApiError(
+            422,
+            "O campo responsavel_parentesco é obrigatório.",
+          )
       }
 
       if (
@@ -136,6 +151,16 @@ export const mockApi: HospitalApi = {
       }
       if (dto.cpf && usuariosState.some((u) => u.cpf === dto.cpf)) {
         throw new ApiError(422, "cpf ja cadastrado")
+      }
+      if (
+        ehPaciente &&
+        precisaResponsavel &&
+        usuariosState.some(
+          (u) =>
+            u.email.toLowerCase() === dto.responsavel_email!.toLowerCase(),
+        )
+      ) {
+        throw new ApiError(422, "responsavel email ja cadastrado")
       }
 
       const novo: Usuario = {
@@ -169,6 +194,31 @@ export const mockApi: HospitalApi = {
           deficiencias: [],
         }
         pacientesState = [...pacientesState, novoPaciente]
+
+        if (precisaResponsavel) {
+          const novoResponsavelUsuario: Usuario = {
+            id: gerarId("usuario"),
+            nome: dto.responsavel_nome!,
+            cpf: dto.responsavel_cpf ?? null,
+            email: dto.responsavel_email!,
+            telefone: dto.responsavel_telefone ?? null,
+            tipo_usuario: "responsavel",
+            created_at: nowISO(),
+            updated_at: nowISO(),
+          }
+          usuariosState = [...usuariosState, novoResponsavelUsuario]
+
+          const vinculo: ResponsavelPaciente = {
+            id: gerarId("responsavel"),
+            usuario_id: novoResponsavelUsuario.id,
+            paciente_id: novoPaciente.id,
+            parentesco: dto.responsavel_parentesco!,
+            principal: dto.responsavel_principal ?? true,
+            created_at: nowISO(),
+            updated_at: nowISO(),
+          }
+          responsaveisState = [...responsaveisState, vinculo]
+        }
       }
 
       return { usuario: novo } satisfies AuthResponse
@@ -391,7 +441,7 @@ export const mockApi: HospitalApi = {
         created_at: nowISO(),
         updated_at: nowISO(),
         especialidades: especialidadesState.filter((e) =>
-          dto.especialidade_ids.includes(e.id),
+          (dto.especialidade_ids ?? []).includes(e.id),
         ),
       }
       medicosState = [...medicosState, novo]

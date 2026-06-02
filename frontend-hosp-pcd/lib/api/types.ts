@@ -87,12 +87,19 @@ export interface RegisterDto {
   observacoes_comunicacao?: string
 
   /**
-   * Usado apenas no autocadastro público do paciente. Quando `true`,
-   * o paciente sinaliza que precisa vincular um responsável depois.
-   * O backend apenas valida — o vínculo em `tbresponsavel_paciente`
-   * é criado em etapa posterior via `/api/responsaveis`.
+   * Quando `necessita_acompanhante === true`, o backend exige os campos
+   * `responsavel_*` abaixo e cria, na mesma transação, o `Usuario`
+   * (`tipo_usuario = "responsavel"`) + o vínculo em
+   * `tbresponsavel_paciente`. Quando `false` (ou ausente), esses campos
+   * são ignorados e nenhum responsável é criado.
    */
-  precisa_responsavel?: boolean
+  responsavel_nome?: string
+  responsavel_cpf?: string
+  responsavel_email?: string
+  responsavel_telefone?: string
+  responsavel_senha?: string
+  responsavel_parentesco?: string
+  responsavel_principal?: boolean
 }
 
 /**

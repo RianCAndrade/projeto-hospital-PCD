@@ -43,7 +43,17 @@ return new class extends Migration
                 'updated_at' => now(),
             ],
             [
-                'nome' => 'RH',
+                'nome' => 'Amanda',
+                'cpf' => '123.456.789-34',
+                'email' => 'amanda@recep.com',
+                'senha' => Hash::make('amanda123'), // admin123
+                'telefone' => '(11) 99999-9999',
+                'tipo_usuario' => TiposUsuario::Recepcionista->value,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'nome' => 'Mano Brow',
                 'cpf' => '123.456.789-01',
                 'email' => 'rh@rh.com',
                 'senha' => Hash::make('rh123'),
@@ -53,9 +63,9 @@ return new class extends Migration
                 'updated_at' => now(),
             ],
             [
-                'nome' => 'Medico',
+                'nome' => 'Alex',
                 'cpf' => '123.456.789-02',
-                'email' => 'medico@medico.com',
+                'email' => 'alex@acolher.com',
                 'senha' => Hash::make('medico123'),
                 'telefone' => '(11) 99999-9999',
                 'tipo_usuario' => TiposUsuario::Medico->value,
