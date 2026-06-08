@@ -27,23 +27,16 @@ return new class extends Migration
             ]);
         });
 
-        // Vincula os 3 médicos seedados às 3 especialidades
-        // (ids 1=Cardiologia, 2=Ortopedia, 3=Neurologia — conforme
-        // ordem do insert na migration de tbespecialidades).
-        DB::table('tbmedico_especialidade')->insert([
-            [
-                'medico_id' => 1,
-                'especialidade_id' => 1,
-            ],
-            [
-                'medico_id' => 2,
-                'especialidade_id' => 2,
-            ],
-            [
-                'medico_id' => 3,
-                'especialidade_id' => 3,
-            ],
-        ]);
+        // Vincula os 9 médicos seedados às 9 especialidades (1:1)
+        // Ordem das especialidades conforme insert em tbespecialidades:
+        // 1=Fisiatria, 2=Neuropediatria, 3=Ortopedia Pediátrica,
+        // 4=Psiquiatria Infantil, 5=Fonoaudiologia, 6=Terapia Ocupacional,
+        // 7=Pediatria do Desenvolvimento, 8=Genética Médica, 9=Oftalmologia
+        $vinculos = [];
+        for ($i = 1; $i <= 9; $i++) {
+            $vinculos[] = ['medico_id' => $i, 'especialidade_id' => $i];
+        }
+        DB::table('tbmedico_especialidade')->insert($vinculos);
     }
 
     /**

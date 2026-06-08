@@ -16,7 +16,6 @@ return new class extends Migration
             $table->id();
 
             $table->foreignId('agendamento_id')
-                ->unique()
                 ->constrained('tbagendamentos')
                 ->restrictOnDelete();
 

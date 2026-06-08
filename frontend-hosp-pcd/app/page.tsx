@@ -72,7 +72,7 @@ export default function HomePage() {
                   <span className="text-accent">passo</span>.
                 </h1>
                 <p className="mt-6 text-lg md:text-xl text-muted-foreground leading-relaxed max-w-xl text-pretty">
-                  O Portal CIIR é dedicado a mães e crianças com deficiência. Agende consultas com especialistas, acompanhe o atendimento em tempo real e sinta-se em casa.
+                  O Portal CIIR é dedicado a adulto e criança com deficiência. Agende consultas com especialistas, acompanhe o atendimento em tempo real e sinta-se em casa.
                 </p>
                 <div className="mt-8 flex flex-col sm:flex-row gap-3">
                   <Button asChild size="lg" className="text-base h-12 px-6 bg-primary hover:bg-primary/90">
@@ -102,63 +102,31 @@ export default function HomePage() {
                 </dl>
               </div>
 
-              {/* Card visual lateral */}
-              <div className="relative">
-                <div className="rounded-3xl border-2 border-border bg-card p-6 sm:p-8 shadow-xl shadow-primary/5">
-                  <div className="flex items-start gap-4">
-                    <div className="grid h-12 w-12 place-items-center rounded-xl bg-primary/10 text-primary shrink-0">
-                      <CalendarHeart size={22} aria-hidden="true" />
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-xs uppercase tracking-widest text-muted-foreground font-bold">Próxima consulta</p>
-                      <p className="font-display font-bold text-lg mt-1">Lucas, 7 anos</p>
-                      <p className="text-sm text-muted-foreground">Neuropediatria · Dra. Beatriz Almeida</p>
-                    </div>
-                  </div>
-
-                  <div className="mt-6 grid grid-cols-3 gap-3 text-center">
-                    <div className="rounded-xl bg-secondary p-3">
-                      <p className="text-xs text-secondary-foreground/70 font-semibold">Data</p>
-                      <p className="font-display font-bold text-sm mt-0.5">Hoje</p>
-                    </div>
-                    <div className="rounded-xl bg-primary/10 p-3">
-                      <p className="text-xs text-primary/70 font-semibold">Horário</p>
-                      <p className="font-display font-bold text-sm mt-0.5 text-primary">14:30</p>
-                    </div>
-                    <div className="rounded-xl bg-accent/15 p-3">
-                      <p className="text-xs text-accent/80 font-semibold">Sala</p>
-                      <p className="font-display font-bold text-sm mt-0.5 text-accent">B-204</p>
-                    </div>
-                  </div>
-
-                  <div className="mt-6 rounded-xl border border-status-aguardando/30 bg-status-aguardando/10 p-4">
-                    <div className="flex items-center gap-2">
-                      <span className="grid h-6 w-6 place-items-center rounded-full bg-status-aguardando text-status-aguardando-foreground">
-                        <Clock size={12} aria-hidden="true" />
-                      </span>
-                      <p className="text-sm font-semibold text-accent">Aguardando atendimento</p>
-                    </div>
-                    <p className="text-sm text-muted-foreground mt-2">
-                      Você será chamada em breve. Sinta-se em casa na nossa sala de espera infantil.
-                    </p>
-                  </div>
-
-                  <ul className="mt-6 space-y-3 text-sm">
-                    <li className="flex items-start gap-3">
-                      <Accessibility size={18} className="text-primary mt-0.5 shrink-0" aria-hidden="true" />
-                      <span className="text-muted-foreground">Espaço 100% acessível com brinquedoteca sensorial.</span>
-                    </li>
-                    <li className="flex items-start gap-3">
-                      <ShieldCheck size={18} className="text-primary mt-0.5 shrink-0" aria-hidden="true" />
-                      <span className="text-muted-foreground">Sigilo médico e dados protegidos pela LGPD.</span>
-                    </li>
-                  </ul>
-                </div>
-                <div
-                  className="absolute -bottom-4 -right-4 -z-10 h-full w-full rounded-3xl bg-accent/20"
-                  aria-hidden="true"
-                />
+            <div className="rounded-3xl border-2 border-border bg-card p-6 sm:p-8 text-center">
+              <div className="grid h-12 w-12 place-items-center rounded-xl bg-primary/10 text-primary mx-auto">
+                <CalendarHeart size={22} aria-hidden="true" />
               </div>
+              <p className="text-xs uppercase tracking-widest text-muted-foreground font-bold mt-4">
+                Próxima consulta
+              </p>
+              <p className="font-display font-bold text-lg mt-1 text-muted-foreground">
+                Faça login para ver suas consultas
+              </p>
+              <p className="text-sm text-muted-foreground mt-2 max-w-xs mx-auto">
+                Após entrar, sua próxima consulta agendada aparecerá aqui com data, horário, especialista e sala.
+              </p>
+              <div className="mt-6 flex flex-col sm:flex-row gap-3 justify-center">
+                <Button asChild size="lg" className="h-12 px-6 bg-primary hover:bg-primary/90">
+                  <Link href="/login" className="gap-2">
+                    Entrar
+                    <ArrowRight size={18} aria-hidden="true" />
+                  </Link>
+                </Button>
+                <Button asChild size="lg" variant="outline" className="h-12 px-6 border-2">
+                  <Link href="/cadastro">Criar conta</Link>
+                </Button>
+              </div>
+            </div>
             </div>
           </div>
         </section>
@@ -169,10 +137,10 @@ export default function HomePage() {
             <div className="max-w-3xl">
               <p className="text-sm uppercase tracking-widest text-accent font-bold">Quem somos</p>
               <h2 className="font-display text-3xl md:text-4xl font-bold mt-2 leading-tight text-pretty">
-                Um hospital pensado para crianças únicas e mães extraordinárias.
+                Um hospital pensado para adultos e crianças com seus responsaveis.
               </h2>
               <p className="mt-4 text-muted-foreground leading-relaxed text-lg">
-                Sabemos que cada criança tem seu próprio tempo. Por isso, construímos uma experiência sem pressa, com profissionais treinados para Portal CIIR diferentes deficiências e famílias.
+                Sabemos que cada paciente tem seu próprio tempo. Por isso, construímos uma experiência sem pressa, com profissionais treinados para Portal CIIR diferentes deficiências e famílias.
               </p>
             </div>
 
@@ -243,10 +211,10 @@ export default function HomePage() {
               <div className="max-w-2xl">
                 <p className="text-sm uppercase tracking-widest text-accent font-bold">Especialidades</p>
                 <h2 className="font-display text-3xl md:text-4xl font-bold mt-2 text-pretty">
-                  Cada criança merece o profissional certo.
+                  Cada paciente, seja ele adulto ou infantil, merece o profissional certo.
                 </h2>
                 <p className="mt-3 text-muted-foreground leading-relaxed">
-                  Filtramos automaticamente os especialistas conforme o tipo de deficiência cadastrado para sua criança.
+                  Filtramos automaticamente os especialistas conforme o tipo de deficiência cadastrado para você paciente adulto ou infantil.
                 </p>
               </div>
               <Button asChild variant="outline" className="self-start md:self-auto border-2">
@@ -331,10 +299,10 @@ export default function HomePage() {
         <section className="py-16 md:py-24">
           <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 text-center">
             <h2 className="font-display text-3xl md:text-5xl font-bold leading-tight text-pretty">
-              Vamos cuidar da sua criança <span className="text-accent">juntas</span>?
+              Deixamos cuidar de <span className="text-accent">você</span>?
             </h2>
             <p className="mt-4 text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-              Crie sua conta agora e cadastre seus filhos. A primeira consulta de avaliação é gratuita.
+              Crie sua conta agora e cadastre-se. A primeira consulta de avaliação é gratuita.
             </p>
             <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
               <Button asChild size="lg" className="h-12 px-8 text-base bg-accent hover:bg-accent/90 text-accent-foreground">
@@ -363,7 +331,7 @@ export default function HomePage() {
                 Portal CIIR
               </Link>
               <p className="mt-4 text-muted-foreground max-w-md leading-relaxed">
-                Cuidado especializado para mães e crianças com deficiência. Aqui, cada família é parte da nossa.
+                Cuidado especializado para adulto e criança com deficiência. Aqui, cada família é parte da nossa.
               </p>
             </div>
             <div>

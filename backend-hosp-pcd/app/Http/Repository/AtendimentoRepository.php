@@ -8,10 +8,19 @@ class AtendimentoRepository
 {
     public function __construct(private Atendimento $atendimento) {}
 
-    public function index(): mixed
+    public function index(array $filtros = []): mixed
     {
-        return $this->atendimento
-            ->with(['agendamento.paciente', 'medico', 'registradoPor'])
+        $query = $this->atendimento
+            ->with(['agendamento.paciente', 'medico', 'registradoPor']);
+
+        if (! empty($filtros['medico_id'])) {
+            $query->where('medico_id', $filtros['medico_id']);
+        }
+        if (! empty($filtros['status'])) {
+            $query->where('status', $filtros['status']);
+        }
+
+        return $query
             ->orderBy('created_at', 'desc')
             ->get();
     }

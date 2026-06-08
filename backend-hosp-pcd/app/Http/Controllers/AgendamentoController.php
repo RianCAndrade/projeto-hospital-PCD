@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Service\AgendamentoService;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -21,7 +22,7 @@ class AgendamentoController
             'data_ate',
         ]);
 
-        $agendamentos = $this->agendamentoService->index($filtros);
+        $agendamentos = $this->agendamentoService->index($filtros, $request->user());
 
         return response()->json([
             'error' => false,
@@ -51,9 +52,9 @@ class AgendamentoController
         ], 201);
     }
 
-    public function show(int $id): JsonResponse
+    public function show(int $id, Request $request): JsonResponse
     {
-        $agendamento = $this->agendamentoService->show($id);
+        $agendamento = $this->agendamentoService->show($id, $request->user());
 
         if (! $agendamento) {
             return response()->json([
@@ -144,9 +145,17 @@ class AgendamentoController
         ], 200);
     }
 
-    public function cancel(int $id): JsonResponse
+    public function cancel(int $id, Request $request): JsonResponse
     {
-        $agendamento = $this->agendamentoService->cancel($id);
+        try {
+            $agendamento = $this->agendamentoService->cancel($id, $request->user());
+        } catch (AuthorizationException $e) {
+            return response()->json([
+                'error' => true,
+                'message' => $e->getMessage(),
+                'data' => null,
+            ], 403);
+        }
 
         if (! $agendamento) {
             return response()->json([
@@ -172,7 +181,15 @@ class AgendamentoController
             'especialidade_id' => 'sometimes|required|exists:tbespecialidades,id',
         ]);
 
-        $agendamento = $this->agendamentoService->reschedule($id, $dados);
+        try {
+            $agendamento = $this->agendamentoService->reschedule($id, $dados, $request->user());
+        } catch (AuthorizationException $e) {
+            return response()->json([
+                'error' => true,
+                'message' => $e->getMessage(),
+                'data' => null,
+            ], 403);
+        }
 
         if (! $agendamento) {
             return response()->json([
@@ -196,16 +213,22 @@ class AgendamentoController
      * intermediário que avisa que o médico chamou o paciente).
      * Reverte outros `chamado` do mesmo médico para `confirmado`.
      */
-    public function chamar(int $id): JsonResponse
+    public function chamar(int $id, Request $request): JsonResponse
     {
         try {
-            $agendamento = $this->agendamentoService->chamar($id);
+            $agendamento = $this->agendamentoService->chamar($id, $request->user());
         } catch (\InvalidArgumentException $e) {
             return response()->json([
                 'error' => true,
                 'message' => $e->getMessage(),
                 'data' => null,
             ], 422);
+        } catch (AuthorizationException $e) {
+            return response()->json([
+                'error' => true,
+                'message' => $e->getMessage(),
+                'data' => null,
+            ], 403);
         }
 
         if (! $agendamento) {
@@ -229,16 +252,22 @@ class AgendamentoController
      * Move o agendamento de `chamado` para `em_atendimento`. Falha com
      * 422 se o médico pular a etapa de "chamar" o paciente.
      */
-    public function iniciarAtendimento(int $id): JsonResponse
+    public function iniciarAtendimento(int $id, Request $request): JsonResponse
     {
         try {
-            $agendamento = $this->agendamentoService->iniciarAtendimento($id);
+            $agendamento = $this->agendamentoService->iniciarAtendimento($id, $request->user());
         } catch (\InvalidArgumentException $e) {
             return response()->json([
                 'error' => true,
                 'message' => $e->getMessage(),
                 'data' => null,
             ], 422);
+        } catch (AuthorizationException $e) {
+            return response()->json([
+                'error' => true,
+                'message' => $e->getMessage(),
+                'data' => null,
+            ], 403);
         }
 
         if (! $agendamento) {

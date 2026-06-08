@@ -100,9 +100,17 @@ export async function apiFetchRaw<T>(
   }
 
   if (!response.ok) {
+    const fallback = (status: number): string => {
+      if (status === 401) return "Sessão expirada. Faça login novamente."
+      if (status === 403)
+        return "Acesso negado. Você não tem permissão para esta operação."
+      if (status === 404) return "Recurso não encontrado."
+      if (status >= 500) return "Erro interno do servidor. Tente novamente."
+      return `Erro ${status} - ${response.statusText}`
+    }
     const message =
       (payload as { message?: string } | undefined)?.message ??
-      `Erro ${response.status} - ${response.statusText}`
+      fallback(response.status)
     throw new ApiError(response.status, message, payload)
   }
 

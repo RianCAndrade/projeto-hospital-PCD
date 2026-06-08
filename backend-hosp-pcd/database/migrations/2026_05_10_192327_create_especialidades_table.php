@@ -19,17 +19,47 @@ return new class extends Migration
 
         DB::table('tbespecialidades')->insert([
             [
-                'nome' => 'Cardiologia',
+                'nome' => 'Fisiatria / Medicina Física e Reabilitação',
                 'created_at' => now(),
                 'updated_at' => now(),
             ],
             [
-                'nome' => 'Ortopedia',
+                'nome' => 'Neuropediatria',
                 'created_at' => now(),
                 'updated_at' => now(),
             ],
             [
-                'nome' => 'Neurologia',
+                'nome' => 'Ortopedia Pediátrica / Funcional',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'nome' => 'Psiquiatria Infantil / Neuropsiquiatria',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'nome' => 'Fonoaudiologia',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'nome' => 'Terapia Ocupacional',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'nome' => 'Pediatria do Desenvolvimento',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'nome' => 'Genética Médica',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'nome' => 'Oftalmologia',
                 'created_at' => now(),
                 'updated_at' => now(),
             ],

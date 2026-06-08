@@ -16,6 +16,14 @@ class AgendamentoRepository
         if (! empty($filtros['paciente_id'])) {
             $query->where('paciente_id', $filtros['paciente_id']);
         }
+        if (! empty($filtros['paciente_ids']) && is_array($filtros['paciente_ids'])) {
+            if (empty($filtros['paciente_ids'])) {
+                // Sem pacientes vinculados: força resultado vazio.
+                $query->whereRaw('0 = 1');
+            } else {
+                $query->whereIn('paciente_id', $filtros['paciente_ids']);
+            }
+        }
         if (! empty($filtros['medico_id'])) {
             $query->where('medico_id', $filtros['medico_id']);
         }

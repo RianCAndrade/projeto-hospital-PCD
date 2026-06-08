@@ -57,7 +57,7 @@ class ChamarAgendamentoTest extends TestCase
         $this->paciente = $usuarioPaciente;
 
         // `tbespecialidades` é seedada pela migration
-        // `2026_05_10_192327_create_especialidades_table.php` (3 linhas: 1, 2, 3).
+        // `2026_05_10_192327_create_especialidades_table.php` (9 linhas: 1=Fisiatria ... 9=Oftalmologia).
     }
 
     private function criarAgendamento(string $status): Agendamento
@@ -182,5 +182,70 @@ class ChamarAgendamentoTest extends TestCase
             ->patchJson('/api/agendamentos/9999/iniciar');
 
         $response->assertNotFound();
+    }
+
+    public function test_medico_nao_pode_chamar_agendamento_de_outro_medico(): void
+    {
+        $agendamento = $this->criarAgendamento(StatusAgendamento::Confirmado->value);
+
+        $outroUsuarioMedico = Usuario::create([
+            'nome' => 'Dr. Outro',
+            'email' => 'outro@acolher.com',
+            'senha' => Hash::make('segura123'),
+            'tipo_usuario' => TiposUsuario::Medico->value,
+        ]);
+        $outroMedico = Medico::create([
+            'usuario_id' => $outroUsuarioMedico->id,
+            'crm' => 'CRM-SP-8888',
+        ]);
+
+        // Vincula o agendamento ao primeiro médico (criado no setUp);
+        // o segundo médico tenta chamar — não pode.
+        $this->assertSame($this->medicoModel->id, $agendamento->medico_id);
+        $this->assertNotSame($outroMedico->id, $agendamento->medico_id);
+
+        $response = $this->actingAs($outroUsuarioMedico)
+            ->patchJson("/api/agendamentos/{$agendamento->id}/chamar");
+
+        $response->assertStatus(403)
+            ->assertJsonPath('error', true);
+
+        $this->assertDatabaseHas('tbagendamentos', [
+            'id' => $agendamento->id,
+            'status' => StatusAgendamento::Confirmado->value,
+        ]);
+    }
+
+    public function test_iniciar_atendimento_cria_atendimento_idempotente(): void
+    {
+        $agendamento = $this->criarAgendamento(StatusAgendamento::Chamado->value);
+
+        // 1 chamada - medico logado ($this->medico)
+        $response = $this->actingAs($this->medico)->patchJson("/api/agendamentos/{$agendamento->id}/iniciar");
+        $response->assertOk();
+        $this->assertDatabaseCount('tbatendimentos', 1);
+        $this->assertDatabaseHas('tbatendimentos', [
+            // 'id' => $agendamento->id,
+            'agendamento_id' => $agendamento->id,
+            'medico_id' => $this->medico->medico->id,
+            'registrado_por_id' => $this->medico->id,
+            'status' => StatusAgendamento::EmAtendimento->value,
+        ]);
+
+        // 2 chamadas - medico logado ($this->medico)
+        $response = $this->actingAs($this->medico)->patchJson("/api/agendamentos/{$agendamento->id}/iniciar");
+        $response->assertOk();
+        $this->assertDatabaseCount('tbatendimentos', 1); // Não duplicou
+        // $this->assertDatabaseHas('tbagendamentos', [
+        //     // 'id' => $agendamento->id,
+        //     'status' => StatusAgendamento::EmAtendimento->value,
+        // ]);
+
+        // Novo agendamento - mesmo médico
+        $agendamento2 = $this->criarAgendamento(StatusAgendamento::Chamado->value);
+        $response = $this->actingAs($this->medico)
+            ->patchJson("/api/agendamentos/{$agendamento2->id}/iniciar");
+        $response->assertOk();
+        $this->assertDatabaseCount('tbatendimentos', 2); // CRIOU novo (agendamento_id diferente)
     }
 }

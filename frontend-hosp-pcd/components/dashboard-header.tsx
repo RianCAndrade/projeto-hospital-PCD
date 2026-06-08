@@ -6,11 +6,22 @@ import { useHospital } from "@/lib/store"
 import { Button } from "@/components/ui/button"
 import { LogOut, Heart } from "lucide-react"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import type { TipoUsuario } from "@/lib/types"
 
 interface Props {
   titulo: string
   descricao?: string
   perfilLabel: string
+}
+
+// Mapeia cada tipo de usuário para seu dashboard
+const dashboardPorTipo: Record<TipoUsuario, string> = {
+  admin: "/admin",
+  rh: "/rh",
+  recepcionista: "/recepcionista",
+  medico: "/medico",
+  responsavel: "/paciente",
+  paciente: "/paciente",
 }
 
 export function DashboardHeader({ titulo, descricao, perfilLabel }: Props) {
@@ -21,6 +32,11 @@ export function DashboardHeader({ titulo, descricao, perfilLabel }: Props) {
     await logout()
     router.push("/")
   }
+
+  // Redireciona para o dashboard correto do usuário logado
+  const dashboardHref = usuarioLogado
+    ? dashboardPorTipo[usuarioLogado.tipo_usuario as TipoUsuario] ?? "/"
+    : "/"
 
   const iniciais = usuarioLogado?.nome
     .split(" ")
@@ -34,7 +50,7 @@ export function DashboardHeader({ titulo, descricao, perfilLabel }: Props) {
     <header className="border-b border-border bg-card/80 backdrop-blur sticky top-0 z-30">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between gap-4">
-          <Link href="/" className="flex items-center gap-2 font-display font-bold text-lg">
+          <Link href={dashboardHref} className="flex items-center gap-2 font-display font-bold text-lg">
             <span className="grid h-9 w-9 place-items-center rounded-lg bg-primary text-primary-foreground">
               <Heart size={18} aria-hidden="true" fill="currentColor" />
             </span>

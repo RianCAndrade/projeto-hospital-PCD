@@ -563,7 +563,7 @@ export default function PacientePage() {
               className="font-display text-xl font-bold mb-4"
             >
               {usuarioLogado.tipo_usuario === "responsavel"
-                ? "Minhas crianças"
+                ? "Sou Responsavel:"
                 : "Meu cadastro"}
             </h2>
             <div className="space-y-3">

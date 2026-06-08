@@ -10,9 +10,9 @@ class SenhaController
 {
     public function __construct(private SenhaService $senhaService) {}
 
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
-        $senhas = $this->senhaService->index();
+        $senhas = $this->senhaService->index($request->user());
 
         return response()->json([
             'error' => false,

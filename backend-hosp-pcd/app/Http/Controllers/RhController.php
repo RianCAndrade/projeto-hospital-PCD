@@ -36,7 +36,7 @@ class RhController
 
         if (! $result) {
             return response()->json([
-                'error' => false,
+                'error' => true,
                 'message' => 'Medico não encontrado',
                 'data' => null,
             ], 404);
@@ -100,7 +100,7 @@ class RhController
                 'error' => true,
                 'message' => 'Medico não encontrado',
                 'data' => null,
-            ]);
+            ], 404);
         }
 
         return response()->json([
@@ -125,7 +125,7 @@ class RhController
         return response()->json([
             'error' => false,
             'message' => 'Medico excluído com sucesso',
-            'data' => $result,
+            'data' => null,
         ], 200);
     }
 

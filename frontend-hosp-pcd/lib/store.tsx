@@ -9,7 +9,8 @@ import {
   useMemo,
   useState,
 } from "react"
-import { api } from "./api"
+import { useRouter } from "next/navigation"
+import { ApiError, api } from "./api"
 import type {
   Agendamento,
   Especialidade,
@@ -115,6 +116,7 @@ interface HospitalContextValue {
 const HospitalContext = createContext<HospitalContextValue | null>(null)
 
 export function HospitalProvider({ children }: { children: React.ReactNode }) {
+  const router = useRouter()
   const [usuarios, setUsuarios] = useState<Usuario[]>(usuariosMock)
   const [pacientes, setPacientes] = useState<Paciente[]>(pacientesMock)
   const [responsaveis, setResponsaveis] =
@@ -143,10 +145,21 @@ export function HospitalProvider({ children }: { children: React.ReactNode }) {
       setAgendamentos(data.agendamentos)
       setEspecialidades(data.especialidades)
       setTiposDeficiencia(data.tipos_deficiencia)
-    } catch {
-      // bootstrap pode não existir ainda no backend — silencioso
+    } catch (err) {
+      // 403 = backend rejeitou o token (papel alterado, conta desativada, etc.)
+      // Força logout e redireciona para o login para o usuário não ficar
+      // vendo dados "fantasma" de mocks antigos.
+      if (err instanceof ApiError && err.status === 403) {
+        setUsuarioLogado(null)
+        if (typeof window !== "undefined") {
+          window.localStorage.removeItem("acolher_token")
+        }
+        router.replace("/login")
+        return
+      }
+      // Outros erros (rede, 500, etc.) são silenciosos — bootstrap é best-effort.
     }
-  }, [])
+  }, [router])
 
   useEffect(() => {
     let ativo = true

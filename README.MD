@@ -249,12 +249,23 @@ Rotas protegidas usam o middleware `auth:sanctum`.
 
 ## 🧭 Perfis de Acesso
 
-| Perfil           | Acesso |
-|------------------|--------|
-| 👑 **Administrador** | Gerencia médicos, funcionários, especialidades e relatórios |
-| 👨‍⚕️ **Médico**       | Visualiza agenda, realiza atendimentos e registra prontuários |
-| 🛎️ **Recepcionista** | Gerencia filas, senhas e agendamentos |
-| 👶 **Paciente**      | Realiza agendamentos e acompanha histórico de consultas |
+A API usa dois middlewares para aplicar a matriz abaixo:
+
+- `role:admin` (ou `role:rh,admin`, etc.) — restringe a rota a um conjunto de papéis.
+- `self.or.role:admin,routeParam:user` — permite o próprio usuário **ou** os papéis privilegiados, validado em relação ao `{id}` da rota.
+
+Para além da autorização de rota, os **Services** aplicam *scoping* adicional nos endpoints que devolvem listas (ex.: `AgendamentoService::index` filtra por `medico_id` quando o usuário é médico, ou por `paciente_ids` quando é responsável). Isso garante que um médico não consiga ver agendamentos de outro médico mesmo se um dia for liberado para `GET /api/agendamentos`.
+
+| Perfil           | Endpoints principais |
+|------------------|----------------------|
+| 👑 **Administrador** | Acesso total: `/api/usuarios/*`, `/api/admin/*`, `/api/rh/*`, `/api/perfil/{id}` (qualquer um) |
+| 🧑‍💼 **RH**           | `/api/rh/medicos/*`, `/api/rh/recepcionistas/*`, `/api/especialidades` (POST/DELETE), `/api/tipos-deficiencia` (POST/DELETE) |
+| 🛎️ **Recepcionista** | `/api/pacientes` (CRUD), `/api/responsaveis` (CRUD), `/api/recepcionista/*`, `/api/senhas` (criar/chamar/mudar status), `/api/agendamentos/{id}/chamar` |
+| 👨‍⚕️ **Médico**       | `/api/agendamentos` (escopo: apenas os seus), `/api/agendamentos/{id}/chamar\|/iniciar` (apenas os seus), `/api/atendimentos` (criar/atualizar), `/api/senhas` (leitura) |
+| 👪 **Responsável**   | `/api/pacientes/meus`, `/api/agendamentos` (escopo: apenas dos seus pacientes), `/api/perfil/{id}` (apenas o próprio) |
+| 🧒 **Paciente**      | `/api/perfil/{id}` (apenas o próprio), `/api/senhas` (leitura das próprias) |
+
+> Todas as rotas (exceto `POST /api/register` e `POST /api/login`) exigem `auth:sanctum` (Bearer token). Respostas de erro de autorização seguem o envelope `{ "error": true, "message": "...", "data": null }` com status `401` (não autenticado) ou `403` (papel insuficiente / fora de escopo).
 
 ---
 

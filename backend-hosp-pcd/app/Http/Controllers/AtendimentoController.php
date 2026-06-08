@@ -10,9 +10,9 @@ class AtendimentoController
 {
     public function __construct(private AtendimentoService $atendimentoService) {}
 
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
-        $atendimentos = $this->atendimentoService->index();
+        $atendimentos = $this->atendimentoService->index($request->user());
 
         return response()->json([
             'error' => false,
@@ -24,7 +24,7 @@ class AtendimentoController
     public function store(Request $request): JsonResponse
     {
         $dados = $request->validate([
-            'agendamento_id' => 'required|exists:tbagendamentos,id|unique:tbatendimentos,agendamento_id',
+            'agendamento_id' => 'required|exists:tbagendamentos,id',
             'medico_id' => 'required|exists:tbmedicos,id',
             'registrado_por_id' => 'nullable|exists:tbusuarios,id',
             'descricao' => 'nullable|string|max:2000',

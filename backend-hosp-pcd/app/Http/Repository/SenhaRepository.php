@@ -8,10 +8,22 @@ class SenhaRepository
 {
     public function __construct(private Senha $senha) {}
 
-    public function index(): mixed
+    public function index(array $filtros = []): mixed
     {
-        return $this->senha
-            ->with(['agendamento', 'paciente'])
+        $query = $this->senha->with(['agendamento', 'paciente']);
+
+        if (! empty($filtros['paciente_ids']) && is_array($filtros['paciente_ids'])) {
+            if (empty($filtros['paciente_ids'])) {
+                $query->whereRaw('0 = 1');
+            } else {
+                $query->whereIn('paciente_id', $filtros['paciente_ids']);
+            }
+        }
+        if (! empty($filtros['status'])) {
+            $query->where('status', $filtros['status']);
+        }
+
+        return $query
             ->orderBy('created_at', 'desc')
             ->get();
     }

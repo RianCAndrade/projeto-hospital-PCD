@@ -23,17 +23,52 @@ return new class extends Migration
 
         DB::table('tbtipos_deficiencia')->insert([
             [
-                'nome' => 'TEA',
+                'nome' => 'TEA (Transtorno do Espectro Autista)',
                 'created_at' => now(),
                 'updated_at' => now(),
             ],
             [
-                'nome' => 'TMA',
+                'nome' => 'Deficiência Física — Membros Superiores',
                 'created_at' => now(),
                 'updated_at' => now(),
             ],
             [
-                'nome' => 'TMC',
+                'nome' => 'Deficiência Física — Membros Inferiores',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'nome' => 'Deficiência Visual',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'nome' => 'Deficiência Auditiva',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'nome' => 'Deficiência Intelectual',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'nome' => 'Deficiência Múltipla',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'nome' => 'Síndrome de Down',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'nome' => 'Paralisia Cerebral',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'nome' => 'Outras / Não Classificado',
                 'created_at' => now(),
                 'updated_at' => now(),
             ],
