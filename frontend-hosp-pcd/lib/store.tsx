@@ -10,7 +10,7 @@ import {
   useState,
 } from "react"
 import { useRouter } from "next/navigation"
-import { ApiError, api } from "./api"
+import { ApiError, api, getToken } from "./api"
 import type {
   Agendamento,
   Especialidade,
@@ -135,29 +135,55 @@ export function HospitalProvider({ children }: { children: React.ReactNode }) {
 
   // Carga inicial + helper para ressincronizar após login/cadastro.
   const carregarBootstrap = useCallback(async () => {
-    try {
-      const data = await api.bootstrap()
-      setUsuarioLogado(data.usuario)
-      setUsuarios(data.usuarios)
-      setPacientes(data.pacientes)
-      setResponsaveis(data.responsaveis)
-      setMedicos(data.medicos)
-      setAgendamentos(data.agendamentos)
-      setEspecialidades(data.especialidades)
-      setTiposDeficiencia(data.tipos_deficiencia)
-    } catch (err) {
-      // 403 = backend rejeitou o token (papel alterado, conta desativada, etc.)
-      // Força logout e redireciona para o login para o usuário não ficar
-      // vendo dados "fantasma" de mocks antigos.
-      if (err instanceof ApiError && err.status === 403) {
-        setUsuarioLogado(null)
-        if (typeof window !== "undefined") {
-          window.localStorage.removeItem("acolher_token")
+    // Se não há token, não tenta buscar bootstrap (evita erro 401/redirect)
+    const token = getToken()
+    if (!token) {
+      setCarregando(false)
+      return
+    }
+
+    // Tenta bootstrap com retry exponencial (máx 3 tentativas)
+    const maxRetries = 3
+    let attempt = 0
+
+    while (attempt < maxRetries) {
+      try {
+        const data = await api.bootstrap()
+        setUsuarioLogado(data.usuario)
+        setUsuarios(data.usuarios)
+        setPacientes(data.pacientes)
+        setResponsaveis(data.responsaveis)
+        setMedicos(data.medicos)
+        setAgendamentos(data.agendamentos)
+        setEspecialidades(data.especialidades)
+        setTiposDeficiencia(data.tipos_deficiencia)
+        return // Sucesso
+      } catch (err) {
+        attempt++
+        const isAuthError = err instanceof ApiError && (err.status === 401 || err.status === 403)
+        const isNetworkError = err instanceof ApiError && err.status === 0
+        const isServerError = err instanceof ApiError && err.status >= 500
+
+        if (isAuthError) {
+          // Token inválido/expirado — logout real
+          setUsuarioLogado(null)
+          if (typeof window !== "undefined") {
+            window.localStorage.removeItem("acolher_token")
+          }
+          router.replace("/login")
+          return
         }
-        router.replace("/login")
-        return
+
+        if (attempt >= maxRetries) {
+          // Esgotou tentativas — para loading mas NÃO faz logout
+          // Mantém usuário logado (token ainda pode ser válido)
+          break
+        }
+
+        // Retry com backoff exponencial (100ms, 200ms, 400ms...)
+        const delay = Math.min(100 * Math.pow(2, attempt - 1), 2000)
+        await new Promise((r) => setTimeout(r, delay))
       }
-      // Outros erros (rede, 500, etc.) são silenciosos — bootstrap é best-effort.
     }
   }, [router])
 

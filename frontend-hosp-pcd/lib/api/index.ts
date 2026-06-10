@@ -28,5 +28,5 @@ export const isUsingMockApi = apiMode !== "real"
 
 export const api: HospitalApi = isUsingMockApi ? mockApi : realApi
 
-export { ApiError } from "./client"
+export { ApiError, getToken } from "./client"
 export type * from "./types"

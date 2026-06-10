@@ -11,7 +11,7 @@ class AgendamentoRepository
     public function index(array $filtros = []): mixed
     {
         $query = $this->agendamento
-            ->with(['paciente', 'medico.usuario', 'especialidade', 'recepcionista']);
+            ->with(['paciente', 'medico.usuario', 'especialidade', 'recepcionista', 'senha']);
 
         if (! empty($filtros['paciente_id'])) {
             $query->where('paciente_id', $filtros['paciente_id']);
@@ -56,7 +56,7 @@ class AgendamentoRepository
     public function show(int $id): ?Agendamento
     {
         return $this->agendamento
-            ->with(['paciente', 'medico.usuario', 'especialidade', 'recepcionista'])
+            ->with(['paciente', 'medico.usuario', 'especialidade', 'recepcionista', 'senha'])
             ->find($id);
     }
 
@@ -70,7 +70,7 @@ class AgendamentoRepository
 
         $agendamento->update($dados);
 
-        return $agendamento->fresh(['paciente', 'medico.usuario', 'especialidade', 'recepcionista']);
+        return $agendamento->fresh(['paciente', 'medico.usuario', 'especialidade', 'recepcionista', 'senha']);
     }
 
     public function destroy(int $id): bool

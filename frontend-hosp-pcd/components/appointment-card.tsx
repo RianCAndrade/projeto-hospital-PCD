@@ -11,6 +11,7 @@ import {
   Baby,
   CheckCircle2,
   BellRing,
+  Ticket,
 } from "lucide-react"
 import { useEffect, useState } from "react"
 
@@ -169,6 +170,12 @@ export function AppointmentCard({
                 </span>
               )}
               <StatusBadge status={agendamento.status} />
+              {agendamento.senha && (
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/15 text-primary px-2.5 py-1 text-xs font-bold uppercase tracking-widest">
+                  <Ticket size={12} aria-hidden="true" />
+                  {agendamento.senha.codigo}
+                </span>
+              )}
             </div>
           </div>
 
@@ -231,6 +238,17 @@ export function AppointmentCard({
                 {tipoDeficiencia}
               </dd>
             </div>
+            {agendamento.senha && (
+              <div className="sm:col-span-2">
+                <dt className="flex items-center gap-1.5 text-xs uppercase tracking-wider text-muted-foreground font-bold">
+                  <Ticket size={12} aria-hidden="true" />
+                  Senha
+                </dt>
+                <dd className="text-sm font-semibold mt-1 font-mono text-primary">
+                  {agendamento.senha.codigo}
+                </dd>
+              </div>
+            )}
           </dl>
 
           {agendamento.observacoes && (

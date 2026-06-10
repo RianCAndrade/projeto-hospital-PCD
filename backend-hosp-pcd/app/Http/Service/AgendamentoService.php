@@ -8,13 +8,14 @@ use App\Enums\TiposUsuario;
 use App\Http\Repository\AgendamentoRepository;
 use App\Models\Agendamento;
 use App\Models\Atendimento;
+use App\Models\Senha;
 use App\Models\Usuario;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
 
 class AgendamentoService
 {
-    public function __construct(private AgendamentoRepository $agendamentoRepository, private AtendimentoService $atendimentoService) {}
+    public function __construct(private AgendamentoRepository $agendamentoRepository, private AtendimentoService $atendimentoService, private SenhaService $senhaService) {}
 
     /**
      * Lista agendamentos aplicando scoping por papel:
@@ -66,6 +67,20 @@ class AgendamentoService
 
     public function updateStatus(int $id, string $status): ?Agendamento
     {
+        if ($status === StatusAgendamento::Confirmado->value) {
+            $agendamento = $this->agendamentoRepository->show($id);
+
+            if ($agendamento) {
+                $jaTemSenha = Senha::where('agendamento_id', $agendamento->id)->exists();
+                if (! $jaTemSenha) {
+                    $this->senhaService->store([
+                        'agendamento_id' => $agendamento->id,
+                        'paciente_id' => $agendamento->paciente_id,
+                    ]);
+                }
+            }
+        }
+
         return $this->agendamentoRepository->update($id, ['status' => $status]);
     }
 
@@ -182,6 +197,25 @@ class AgendamentoService
             throw new AuthorizationException(
                 'Você só pode iniciar atendimentos da sua agenda.',
             );
+        }
+
+        if ($agendamento->status === StatusAgendamento::EmAtendimento->value) {
+            // idempotente: ja em atendimento, so atualiza quem registrou
+
+            Atendimento::updateOrCreate(
+                [
+                    'agendamento_id' => $agendamento->id,
+                    'medico_id' => $agendamento->medico_id,
+                ],
+                [
+                    'registrado_por_id' => $user->id,
+                    'status' => StatusAtendimento::EmAtendimento->value,
+                ]
+            );
+
+            return $this->agendamentoRepository->update($id, [
+                'status' => StatusAgendamento::EmAtendimento->value,
+            ]);
         }
 
         if ($agendamento->status !== StatusAgendamento::Chamado->value) {

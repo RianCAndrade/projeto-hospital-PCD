@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Table;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 #[Table('tbagendamentos', timestamps: true)]
@@ -36,5 +37,10 @@ class Agendamento extends Model
     public function recepcionista(): BelongsTo
     {
         return $this->belongsTo(Usuario::class, 'recepcionista_id');
+    }
+
+    public function senha(): HasOne
+    {
+        return $this->hasOne(Senha::class, 'agendamento_id');
     }
 }

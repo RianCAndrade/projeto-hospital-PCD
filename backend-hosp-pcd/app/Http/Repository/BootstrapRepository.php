@@ -36,7 +36,7 @@ class BootstrapRepository
             'responsaveis' => $this->responsavelPaciente->with(['usuario', 'paciente'])->get(),
             'medicos' => $this->medico->with(['usuario', 'especialidades'])->get(),
             'agendamentos' => $this->agendamento
-                ->with(['paciente', 'medico.usuario', 'especialidade', 'recepcionista'])
+                ->with(['paciente', 'medico.usuario', 'especialidade', 'recepcionista', 'senha'])
                 ->orderBy('data_agendamento')
                 ->orderBy('horario')
                 ->get(),

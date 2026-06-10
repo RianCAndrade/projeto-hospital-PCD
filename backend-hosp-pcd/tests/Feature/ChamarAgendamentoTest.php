@@ -158,14 +158,15 @@ class ChamarAgendamentoTest extends TestCase
         ]);
     }
 
-    public function test_iniciar_agendamento_ja_em_atendimento_retorna_422(): void
+    public function test_iniciar_agendamento_ja_em_atendimento_idempotente(): void
     {
         $agendamento = $this->criarAgendamento(StatusAgendamento::EmAtendimento->value);
 
         $response = $this->actingAs($this->medico)
             ->patchJson("/api/agendamentos/{$agendamento->id}/iniciar");
 
-        $response->assertStatus(422);
+        $response->assertOk()
+            ->assertJsonPath('data.status', StatusAgendamento::EmAtendimento->value);
     }
 
     public function test_chamar_agendamento_inexistente_retorna_404(): void
