@@ -185,6 +185,42 @@ export interface CreateResponsavelDto {
 }
 
 // ──────────────────────────────────────────────────────────────────────────
+// Admin - Usuários (RH, Admin, Recepcionista)
+// ──────────────────────────────────────────────────────────────────────────
+
+/**
+ * POST /api/admin/usuarios
+ *
+ * Admin cria usuários do tipo RH, Admin ou Recepcionista.
+ * CPF obrigatório (igual RH).
+ */
+export interface CreateAdminUsuarioDto {
+  nome: string
+  cpf: string
+  email: string
+  senha: string
+  telefone?: string | null
+  tipo_usuario: 'rh' | 'admin' | 'recepcionista'
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// RH - Recepcionistas
+// ──────────────────────────────────────────────────────────────────────────
+
+/**
+ * POST /api/rh/recepcionistas
+ *
+ * RH/Admin cadastra recepcionista.
+ */
+export interface CreateRhRecepcionistaDto {
+  nome: string
+  cpf: string
+  email: string
+  senha: string
+  telefone?: string | null
+}
+
+// ──────────────────────────────────────────────────────────────────────────
 // Médicos  (endpoints a implementar)
 // ──────────────────────────────────────────────────────────────────────────
 
@@ -427,5 +463,13 @@ export interface HospitalApi {
     list(filtros?: UsuarioFiltros): Promise<Usuario[]>
     get(id: number): Promise<Usuario>
     delete(id: number): Promise<void>
+  }
+
+  admin: {
+    storeUsuario(dto: CreateAdminUsuarioDto): Promise<Usuario>
+  }
+
+  rh: {
+    storeRecepcionista(dto: CreateRhRecepcionistaDto): Promise<Usuario>
   }
 }

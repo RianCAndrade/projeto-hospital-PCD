@@ -14,6 +14,8 @@ import type {
   AuthResponse,
   BootstrapData,
   HospitalApi,
+  CreateAdminUsuarioDto,
+  CreateRhRecepcionistaDto,
 } from "./types"
 
 /**
@@ -324,6 +326,18 @@ export const realApi: HospitalApi = {
     },
     async delete(id) {
       await apiFetch<void>(`/usuarios/${id}`, { method: "DELETE" })
+    },
+  },
+
+  admin: {
+    storeUsuario(dto: CreateAdminUsuarioDto) {
+      return apiFetch<Usuario>("/admin/usuarios", { method: "POST", body: dto })
+    },
+  },
+
+  rh: {
+    storeRecepcionista(dto: CreateRhRecepcionistaDto) {
+      return apiFetch<Usuario>("/rh/recepcionistas", { method: "POST", body: dto })
     },
   },
 }

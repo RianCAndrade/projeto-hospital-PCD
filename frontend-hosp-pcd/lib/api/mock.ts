@@ -24,12 +24,14 @@ import {
 import { ApiError, setToken } from "./client"
 import type {
   AuthResponse,
+  CreateAdminUsuarioDto,
   CreateAgendamentoDto,
   CreateAtendimentoDto,
   CreateEspecialidadeDto,
   CreateMedicoDto,
   CreatePacienteDto,
   CreateResponsavelDto,
+  CreateRhRecepcionistaDto,
   CreateSenhaDto,
   CreateTipoDeficienciaDto,
   HospitalApi,
@@ -871,6 +873,48 @@ export const mockApi: HospitalApi = {
       await delay(200)
       usuariosState = usuariosState.filter((u) => u.id !== id)
       persistirEstado()
+    },
+  },
+
+  admin: {
+    async storeUsuario(dto: CreateAdminUsuarioDto) {
+      await delay(300)
+      const existe = usuariosState.some((u) => u.cpf === dto.cpf || u.email === dto.email)
+      if (existe) throw new ApiError(422, "CPF ou email já cadastrado")
+      const novo: Usuario = {
+        id: gerarId("usuario"),
+        nome: dto.nome,
+        cpf: dto.cpf,
+        email: dto.email,
+        telefone: dto.telefone ?? null,
+        tipo_usuario: dto.tipo_usuario,
+        created_at: nowISO(),
+        updated_at: nowISO(),
+      }
+      usuariosState = [...usuariosState, novo]
+      persistirEstado()
+      return novo
+    },
+  },
+
+  rh: {
+    async storeRecepcionista(dto: CreateRhRecepcionistaDto) {
+      await delay(300)
+      const existe = usuariosState.some((u) => u.cpf === dto.cpf || u.email === dto.email)
+      if (existe) throw new ApiError(422, "CPF ou email já cadastrado")
+      const novo: Usuario = {
+        id: gerarId("usuario"),
+        nome: dto.nome,
+        cpf: dto.cpf,
+        email: dto.email,
+        telefone: dto.telefone ?? null,
+        tipo_usuario: "recepcionista",
+        created_at: nowISO(),
+        updated_at: nowISO(),
+      }
+      usuariosState = [...usuariosState, novo]
+      persistirEstado()
+      return novo
     },
   },
 }

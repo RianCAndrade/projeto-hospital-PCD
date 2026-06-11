@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useHospital } from "@/lib/store"
+import { api } from "@/lib/api"
 import { DashboardHeader } from "@/components/dashboard-header"
 import { StatusBadge } from "@/components/status-badge"
 import { Button } from "@/components/ui/button"
@@ -82,6 +83,7 @@ export default function AdminPage() {
     removerUsuario,
     getMedicoNome,
     getEspecialidadeNome,
+    carregarBootstrap,
   } = useHospital()
 
   const [novoMedicoOpen, setNovoMedicoOpen] = useState(false)
@@ -100,12 +102,16 @@ export default function AdminPage() {
   const [funcEmail, setFuncEmail] = useState("")
   const [funcTel, setFuncTel] = useState("")
   const [funcSenha, setFuncSenha] = useState("")
-  const [funcTipo, setFuncTipo] = useState<TipoUsuario>("recepcionista")
+  const [funcCpf, setFuncCpf] = useState("")
+  const [funcTipo, setFuncTipo] = useState<"recepcionista" | "rh" | "admin">("recepcionista")
 
   const [pacNome, setPacNome] = useState("")
   const [pacEmail, setPacEmail] = useState("")
   const [pacTel, setPacTel] = useState("")
   const [pacSenha, setPacSenha] = useState("")
+  const [pacCpf, setPacCpf] = useState("")
+  const [pacDataNasc, setPacDataNasc] = useState("")
+  const [pacSexo, setPacSexo] = useState("nao_informado")
   const [pacPrecisaResp, setPacPrecisaResp] = useState(false)
 
   useEffect(() => {
@@ -243,30 +249,42 @@ export default function AdminPage() {
 
   async function handleCriarFunc(e: React.FormEvent) {
     e.preventDefault()
-    if (!funcNome || !funcEmail || !funcSenha) {
-      toast.error("Preencha nome, email e senha.")
+    if (!funcNome || !funcEmail || !funcSenha || !funcCpf) {
+      toast.error("Preencha nome, email, CPF e senha.")
       return
     }
     try {
-      await cadastrar({
-        nome: funcNome,
-        email: funcEmail,
-        telefone: funcTel,
-        senha: funcSenha,
-        tipo_usuario: funcTipo,
-      })
-      toast.success(
-        funcTipo === "admin"
-          ? "Administrador cadastrado."
-          : funcTipo === "rh"
-            ? "RH cadastrado(a)."
-            : "Recepcionista cadastrado(a).",
-      )
+      if (funcTipo === "recepcionista") {
+        await api.rh.storeRecepcionista({
+          nome: funcNome,
+          cpf: funcCpf,
+          email: funcEmail,
+          telefone: funcTel || null,
+          senha: funcSenha,
+        })
+        toast.success("Recepcionista cadastrado(a).")
+      } else {
+        await api.admin.storeUsuario({
+          nome: funcNome,
+          cpf: funcCpf,
+          email: funcEmail,
+          telefone: funcTel || null,
+          senha: funcSenha,
+          tipo_usuario: funcTipo,
+        })
+        toast.success(
+          funcTipo === "admin"
+            ? "Administrador cadastrado."
+            : "RH cadastrado(a).",
+        )
+      }
       setFuncNome("")
       setFuncEmail("")
       setFuncTel("")
       setFuncSenha("")
+      setFuncCpf("")
       setNovoFuncOpen(false)
+      await carregarBootstrap()
     } catch (err) {
       const msg =
         err instanceof ApiError
@@ -278,8 +296,8 @@ export default function AdminPage() {
 
   async function handleCriarPaciente(e: React.FormEvent) {
     e.preventDefault()
-    if (!pacNome || !pacEmail || !pacSenha) {
-      toast.error("Preencha nome, email e senha.")
+    if (!pacNome || !pacEmail || !pacSenha || !pacCpf || !pacDataNasc) {
+      toast.error("Preencha todos os campos obrigatórios.")
       return
     }
     if (pacSenha.length < 6) {
@@ -290,17 +308,30 @@ export default function AdminPage() {
       await cadastrar({
         nome: pacNome,
         email: pacEmail,
-        telefone: pacTel,
+        telefone: pacTel || undefined,
         senha: pacSenha,
         tipo_usuario: "paciente",
+        cpf: pacCpf,
+        data_nascimento: pacDataNasc,
+        sexo: pacSexo,
+        possui_autismo: false,
+        necessita_acessibilidade: false,
+        usa_cadeira_rodas: false,
+        necessita_acompanhante: pacPrecisaResp,
+        observacoes: undefined,
+        observacoes_comunicacao: undefined,
       })
       toast.success("Paciente cadastrado(a) com sucesso.")
       setPacNome("")
       setPacEmail("")
       setPacTel("")
       setPacSenha("")
+      setPacCpf("")
+      setPacDataNasc("")
+      setPacSexo("nao_informado")
       setPacPrecisaResp(false)
       setNovoPacOpen(false)
+      await carregarBootstrap()
     } catch (err) {
       const msg =
         err instanceof ApiError ? err.message : "Erro ao cadastrar paciente."
@@ -952,6 +983,20 @@ export default function AdminPage() {
                 />
               </div>
               <div className="space-y-2">
+                <Label htmlFor="f-cpf" className="text-sm font-semibold">
+                  CPF
+                </Label>
+                <Input
+                  id="f-cpf"
+                  value={funcCpf}
+                  onChange={(e) => setFuncCpf(e.target.value)}
+                  placeholder="000.000.000-00"
+                  className="h-11"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
                 <Label htmlFor="f-tel" className="text-sm font-semibold">
                   Telefone
                 </Label>
@@ -962,8 +1007,6 @@ export default function AdminPage() {
                   className="h-11"
                 />
               </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label htmlFor="f-senha" className="text-sm font-semibold">
                   Senha
@@ -976,24 +1019,24 @@ export default function AdminPage() {
                   className="h-11"
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="f-tipo" className="text-sm font-semibold">
-                  tipo_usuario
-                </Label>
-                <Select
-                  value={funcTipo}
-                  onValueChange={(v) => setFuncTipo(v as TipoUsuario)}
-                >
-                  <SelectTrigger id="f-tipo" className="h-11">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="recepcionista">recepcionista</SelectItem>
-                    <SelectItem value="rh">rh</SelectItem>
-                    <SelectItem value="admin">admin</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="f-tipo" className="text-sm font-semibold">
+                tipo_usuario
+              </Label>
+              <Select
+                value={funcTipo}
+                onValueChange={(v) => setFuncTipo(v as "recepcionista" | "rh" | "admin")}
+              >
+                <SelectTrigger id="f-tipo" className="h-11">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="recepcionista">recepcionista</SelectItem>
+                  <SelectItem value="rh">rh</SelectItem>
+                  <SelectItem value="admin">admin</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             <DialogFooter className="gap-2 sm:gap-0">
@@ -1054,6 +1097,20 @@ export default function AdminPage() {
                 />
               </div>
               <div className="space-y-2">
+                <Label htmlFor="adm-p-cpf" className="text-sm font-semibold">
+                  CPF
+                </Label>
+                <Input
+                  id="adm-p-cpf"
+                  value={pacCpf}
+                  onChange={(e) => setPacCpf(e.target.value)}
+                  placeholder="000.000.000-00"
+                  className="h-11"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
                 <Label htmlFor="adm-p-tel" className="text-sm font-semibold">
                   Telefone
                 </Label>
@@ -1064,19 +1121,48 @@ export default function AdminPage() {
                   className="h-11"
                 />
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="adm-p-datanasc" className="text-sm font-semibold">
+                  Data de nascimento
+                </Label>
+                <Input
+                  id="adm-p-datanasc"
+                  type="date"
+                  value={pacDataNasc}
+                  onChange={(e) => setPacDataNasc(e.target.value)}
+                  className="h-11"
+                />
+              </div>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="adm-p-senha" className="text-sm font-semibold">
-                Senha
-              </Label>
-              <Input
-                id="adm-p-senha"
-                type="password"
-                value={pacSenha}
-                onChange={(e) => setPacSenha(e.target.value)}
-                placeholder="Mínimo 6 caracteres"
-                className="h-11"
-              />
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label htmlFor="adm-p-sexo" className="text-sm font-semibold">
+                  Sexo
+                </Label>
+                <Select value={pacSexo} onValueChange={setPacSexo}>
+                  <SelectTrigger id="adm-p-sexo" className="h-11">
+                    <SelectValue placeholder="Selecione" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="masculino">Masculino</SelectItem>
+                    <SelectItem value="feminino">Feminino</SelectItem>
+                    <SelectItem value="nao_informado">Não informado</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="adm-p-senha" className="text-sm font-semibold">
+                  Senha
+                </Label>
+                <Input
+                  id="adm-p-senha"
+                  type="password"
+                  value={pacSenha}
+                  onChange={(e) => setPacSenha(e.target.value)}
+                  placeholder="Mínimo 6 caracteres"
+                  className="h-11"
+                />
+              </div>
             </div>
 
             <label
