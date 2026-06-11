@@ -64,6 +64,14 @@ class MedicoController
 
         $result = $this->medicoService->store($validated);
 
+        if(! $result){
+            return response()->json([
+                'error' => true,
+                'message' => 'Erro ao cadastrar médico.',
+                'data' => null,
+            ], 404);
+        }
+
         return response()->json([
             'error' => false,
             'message' => 'Medico cadastrado com sucesso.',

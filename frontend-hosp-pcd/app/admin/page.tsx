@@ -91,6 +91,7 @@ export default function AdminPage() {
   const [novoPacOpen, setNovoPacOpen] = useState(false)
 
   const [medNome, setMedNome] = useState("")
+  const [medCpf, setMedCpf] = useState("")
   const [medEmail, setMedEmail] = useState("")
   const [medTel, setMedTel] = useState("")
   const [medSenha, setMedSenha] = useState("")
@@ -217,13 +218,14 @@ export default function AdminPage() {
 
   async function handleCriarMedico(e: React.FormEvent) {
     e.preventDefault()
-    if (!medNome || !medEmail || !medCrm || !medSenha || !medEspId) {
+    if (!medNome || !medCpf || !medEmail  || !medCrm || !medSenha || !medEspId) {
       toast.error("Preencha todos os campos obrigatórios.")
       return
     }
     try {
       await criarMedico({
         nome: medNome,
+        cpf: medCpf,
         email: medEmail,
         telefone: medTel || null,
         senha: medSenha,
@@ -233,6 +235,7 @@ export default function AdminPage() {
       })
       toast.success("Médico cadastrado com sucesso.")
       setMedNome("")
+      setMedCpf("")
       setMedEmail("")
       setMedTel("")
       setMedSenha("")
@@ -843,6 +846,17 @@ export default function AdminPage() {
                 id="m-nome"
                 value={medNome}
                 onChange={(e) => setMedNome(e.target.value)}
+                className="h-11"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="m-nome" className="text-sm font-semibold">
+                CPF
+              </Label>
+              <Input
+                id="m-cpf"
+                value={medCpf}
+                onChange={(e) => setMedCpf(e.target.value)}
                 className="h-11"
               />
             </div>
